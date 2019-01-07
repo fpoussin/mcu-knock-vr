@@ -4,3 +4,6 @@
 [submodule "code/ChibiOS-Contrib"]
 	path = code/ChibiOS-Contrib
 	url = git@github.com:ChibiOS/ChibiOS-Contrib.git
+[submodule "code/cm4-dsp-lib"]
+	path = code/cm4-dsp-lib
+	url = git@github.com:fpoussin/cm4-dsp-lib.git
