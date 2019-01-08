@@ -22,11 +22,11 @@ GUI/*.pro.user*
 build-*
 GUI/res/oxygen
 
-code/*/.dep
-code/*/build
-code/*/.cproject
-code/*/.project
-code/*/*.user
+code/.dep
+code/build
+code/.cproject
+code/.project
+code/*.user
 *.dll
 *.lib
 *.a

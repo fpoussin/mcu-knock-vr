@@ -142,7 +142,7 @@ TCPPSRC =
 ASMSRC = $(ALLASMSRC)
 ASMXSRC = $(ALLXASMSRC)
 
-INCDIR = $(ALLINC) $(TESTINC)
+INCDIR = $(ALLINC) $(TESTINC) $(CHIBIOS_CONTRIB)/os/various
 
 #
 # Project, sources and paths
