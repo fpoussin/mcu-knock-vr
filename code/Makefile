@@ -95,7 +95,6 @@ include $(CHIBIOS)/os/common/startup/ARMCMx/compilers/GCC/mk/startup_stm32f3xx.m
 # HAL-OSAL files (optional).
 include $(CHIBIOS_CONTRIB)/os/hal/hal.mk
 include $(CHIBIOS_CONTRIB)/os/hal/ports/STM32/STM32F3xx/platform.mk
-include $(CHIBIOS)/os/hal/boards/ST_STM32F3_DISCOVERY/board.mk
 include $(CHIBIOS)/os/hal/osal/rt/osal.mk
 # RTOS files (optional).
 include $(CHIBIOS)/os/rt/rt.mk
@@ -112,6 +111,7 @@ LDSCRIPT= $(STARTUPLD)/STM32F303xC.ld
 # setting.
 CSRC = $(ALLCSRC) \
        $(TESTSRC) \
+       board.c \
        main.c
 
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global
