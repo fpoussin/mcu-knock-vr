@@ -15,7 +15,6 @@ ChibiOS/os/hal/lib/streams
 ChibiOS/os/hal/osal/lib
 ChibiOS/os/hal/osal/rt
 ChibiOS/os/hal/ports/common/ARMCMx
-ChibiOS/os/hal/ports/STM32/LLD/ADCv2
 ChibiOS/os/hal/ports/STM32/LLD/ADCv3
 ChibiOS/os/hal/ports/STM32/LLD/ADCv4
 ChibiOS/os/hal/ports/STM32/LLD/BDMAv1

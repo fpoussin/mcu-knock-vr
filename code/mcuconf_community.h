@@ -85,6 +85,14 @@
 #endif
 
 /*
+ * OPAMP driver system settings.
+ */
+#define STM32_OPAMP_USE_OPAMP1                  TRUE
+#define STM32_OPAMP_USE_OPAMP2                  TRUE
+#define STM32_OPAMP_USE_OPAMP3                  TRUE
+#define STM32_OPAMP_USE_OPAMP4                  TRUE
+
+/*
  * USBH driver system settings.
  */
 #define STM32_OTG1_CHANNELS_NUMBER          8

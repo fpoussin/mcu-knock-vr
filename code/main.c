@@ -56,6 +56,27 @@ static const COMPConfig comp6_conf = {
   STM32_COMP_Mode_HighSpeed // CSR
 };
 
+static const OPAMPConfig opamp1_conf = {
+  STM32_OPAMP_NonInvertingInput_IO3 | // INP connectd to PA3
+  STM32_OPAMP_InvertingInput_Vout // INM connected to vout (follower)
+};
+
+static const OPAMPConfig opamp2_conf = {
+  STM32_OPAMP_NonInvertingInput_IO2 | // INP connectd to PB14
+  STM32_OPAMP_InvertingInput_Vout // INM connected to vout (follower)
+};
+
+static const OPAMPConfig opamp3_conf = {
+  STM32_OPAMP_NonInvertingInput_IO3 | // INP connectd to PB0
+  STM32_OPAMP_InvertingInput_Vout // INM connected to vout (follower)
+};
+
+static const OPAMPConfig opamp4_conf = {
+  STM32_OPAMP_NonInvertingInput_IO4 | // INP connectd to PB13
+  STM32_OPAMP_InvertingInput_Vout // INM connected to vout (follower)
+};
+
+
 /*
  * Application entry point.
  */
@@ -67,11 +88,19 @@ int main(void) {
   /*
    * Start peripherals
    */
+  adcStart(&ADCD1, NULL);
+  adcStart(&ADCD2, NULL);
+  adcStart(&ADCD3, NULL);
+  adcStart(&ADCD4, NULL);
   dacStart(&DACD1, &dac_conf);
   dacStart(&DACD2, &dac_conf);
   compStart(&COMPD1, &comp1_conf);
   compStart(&COMPD2, &comp2_conf);
   compStart(&COMPD6, &comp6_conf);
+  opampStart(&OPAMPD1, &opamp1_conf);
+  opampStart(&OPAMPD2, &opamp2_conf);
+  opampStart(&OPAMPD3, &opamp3_conf);
+  opampStart(&OPAMPD4, &opamp4_conf);
 
   /*
    * Starting a continuous conversion.
@@ -81,6 +110,10 @@ int main(void) {
   compEnable(&COMPD1);
   compEnable(&COMPD2);
   compEnable(&COMPD6);
+  opampEnable(&OPAMPD1);
+  opampEnable(&OPAMPD2);
+  opampEnable(&OPAMPD3);
+  opampEnable(&OPAMPD4);
 
   /*
    * Normal main() thread activity.
