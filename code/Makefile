@@ -99,10 +99,6 @@ include $(CHIBIOS)/os/hal/osal/rt/osal.mk
 # RTOS files (optional).
 include $(CHIBIOS)/os/rt/rt.mk
 include $(CHIBIOS)/os/common/ports/ARMCMx/compilers/GCC/mk/port_v7m.mk
-# Other files (optional).
-#include $(CHIBIOS)/test/lib/test.mk
-#include $(CHIBIOS)/test/rt/rt_test.mk
-#include $(CHIBIOS)/test/oslib/oslib_test.mk
 
 # Define linker script file here
 LDSCRIPT= $(STARTUPLD)/STM32F303xC.ld
@@ -142,7 +138,7 @@ TCPPSRC =
 ASMSRC = $(ALLASMSRC)
 ASMXSRC = $(ALLXASMSRC)
 
-INCDIR = $(ALLINC) $(TESTINC) $(CHIBIOS_CONTRIB)/os/various
+INCDIR = $(ALLINC) $(TESTINC) $(CHIBIOS_CONTRIB)/os/various cm4-dsp-lib/inc
 
 #
 # Project, sources and paths
@@ -192,7 +188,7 @@ CPPWARN = -Wall -Wextra -Wundef
 #
 
 # List all user C define here, like -D_DEBUG=1
-UDEFS =
+UDEFS = -DARM_MATH_CM4 -DVECTORS_SECTION=\".ram4_init.vectors\"
 
 # Define ASM defines here
 UADEFS =
@@ -201,10 +197,10 @@ UADEFS =
 UINCDIR =
 
 # List the user directory to look for the libraries here
-ULIBDIR =
+ULIBDIR = cm4-dsp-lib
 
 # List all user libraries here
-ULIBS =
+ULIBS = -lmath_cm4f
 
 #
 # End of user defines

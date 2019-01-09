@@ -844,6 +844,7 @@ ChibiOS/os/various/wolfssl_bindings/hwrng.c
 ChibiOS/os/various/wolfssl_bindings/user_settings.h
 ChibiOS/os/various/wolfssl_bindings/wolfssl_chibios.c
 ChibiOS/os/various/wolfssl_bindings/wolfssl_chibios.h
+Makefile
 board.c
 board.h
 board_gpio.h
