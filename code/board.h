@@ -75,6 +75,8 @@
 /* Driver macros.                                                            */
 /*===========================================================================*/
 
+#define CCM_FUNC __attribute__((section(".ram4_init.code")))
+
 /*
  * I/O ports initial setup, this configuration is established soon after reset
  * in the initialization code.

@@ -1,4 +1,5 @@
 .
+cm4-dsp-lib/inc
 ChibiOS/os/common/abstractions/cmsis_os
 ChibiOS/os/common/abstractions/nasa_cfe/osal/include
 ChibiOS/os/common/abstractions/nasa_cfe/psp/include
@@ -61,3 +62,4 @@ ChibiOS-Contrib/os/hal/ports/STM32/LLD/OPAMPv1
 ChibiOS-Contrib/os/hal/ports/STM32/LLD/TIMv1
 ChibiOS-Contrib/os/hal/ports/STM32/LLD/USBHv1
 ChibiOS-Contrib/os/various
+linker

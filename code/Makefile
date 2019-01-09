@@ -101,13 +101,17 @@ include $(CHIBIOS)/os/rt/rt.mk
 include $(CHIBIOS)/os/common/ports/ARMCMx/compilers/GCC/mk/port_v7m.mk
 
 # Define linker script file here
-LDSCRIPT= $(STARTUPLD)/STM32F303xC.ld
+LDSCRIPT = linker/STM32F303xC.ld
 
 # C sources that can be compiled in ARM or THUMB mode depending on the global
 # setting.
 CSRC = $(ALLCSRC) \
        $(TESTSRC) \
        board.c \
+       knock.c \
+       vr.c \
+       ipc.c \
+       settings.c \
        main.c
 
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global
@@ -200,7 +204,7 @@ UINCDIR =
 ULIBDIR = cm4-dsp-lib
 
 # List all user libraries here
-ULIBS = -lmath_cm4f
+ULIBS = -lmath_cm4f -lm
 
 #
 # End of user defines

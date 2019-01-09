@@ -16,6 +16,7 @@
 
 #include "ch.h"
 #include "hal.h"
+#include "threads.h"
 
 static const DACConfig dac_conf = {
   .init         = 2047U,
@@ -23,6 +24,7 @@ static const DACConfig dac_conf = {
   .cr           = 0
 };
 
+// VR1
 static const COMPConfig comp1_conf = {
   COMP_OUTPUT_NORMAL,
   COMP_IRQ_RISING,
@@ -34,6 +36,7 @@ static const COMPConfig comp1_conf = {
   STM32_COMP_Mode_HighSpeed // CSR
 };
 
+// VR2
 static const COMPConfig comp2_conf = {
   COMP_OUTPUT_NORMAL,
   COMP_IRQ_RISING,
@@ -45,6 +48,7 @@ static const COMPConfig comp2_conf = {
   STM32_COMP_Mode_HighSpeed // CSR
 };
 
+// VR3
 static const COMPConfig comp6_conf = {
   COMP_OUTPUT_NORMAL,
   COMP_IRQ_RISING,
@@ -56,21 +60,25 @@ static const COMPConfig comp6_conf = {
   STM32_COMP_Mode_HighSpeed // CSR
 };
 
+// VR1
 static const OPAMPConfig opamp1_conf = {
   STM32_OPAMP_NonInvertingInput_IO3 | // INP connectd to PA3
   STM32_OPAMP_InvertingInput_Vout // INM connected to vout (follower)
 };
 
+// VR1
 static const OPAMPConfig opamp2_conf = {
   STM32_OPAMP_NonInvertingInput_IO2 | // INP connectd to PB14
   STM32_OPAMP_InvertingInput_Vout // INM connected to vout (follower)
 };
 
+// VR1
 static const OPAMPConfig opamp3_conf = {
   STM32_OPAMP_NonInvertingInput_IO3 | // INP connectd to PB0
   STM32_OPAMP_InvertingInput_Vout // INM connected to vout (follower)
 };
 
+// VR1
 static const OPAMPConfig opamp4_conf = {
   STM32_OPAMP_NonInvertingInput_IO4 | // INP connectd to PB13
   STM32_OPAMP_InvertingInput_Vout // INM connected to vout (follower)
@@ -114,6 +122,9 @@ int main(void) {
   opampEnable(&OPAMPD2);
   opampEnable(&OPAMPD3);
   opampEnable(&OPAMPD4);
+
+  createKnockThread();
+  createVrThreads();
 
   /*
    * Normal main() thread activity.
