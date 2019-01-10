@@ -107,6 +107,7 @@ LDSCRIPT = linker/STM32F303xC.ld
 # setting.
 CSRC = $(ALLCSRC) \
        $(TESTSRC) \
+       $(CHIBIOS_CONTRIB)/os/various/median.c \
        board.c \
        knock.c \
        vr.c \

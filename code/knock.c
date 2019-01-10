@@ -9,7 +9,10 @@
  * ADC4
  */
 
+static bool sampling_enabled = false;
 static adcsample_t knock_samples[2048];
+static uint16_t knock_value;
+static EVENTSOURCE_DECL(evt_knock_result_rdy);
 
 /* Every 1024 samples at 117.263KHz each, triggers at around 114Hz */
 CCM_FUNC static void adcCallback(ADCDriver *adcp, adcsample_t *buffer, size_t n)
@@ -49,10 +52,10 @@ CCM_FUNC static uint16_t calculateKnockIntensity(uint16_t tgtFreq, uint16_t rati
   uint16_t res;
   float32_t multiplier;
 
-  const float32_t hzPerBin = (float32_t)smplFreq / (float32_t)size;
+  const float32_t hzPerBin = (float32_t)smplFreq / (float32_t)size; // 458Hz
   const float32_t flRatio = ((float32_t)ratio / 100000.0f);
-  const uint16_t range = 11;
-  uint16_t index = tgtFreq / (uint16_t)hzPerBin;
+  const uint16_t range = 5;
+  uint16_t index = (tgtFreq / (uint16_t)hzPerBin);
 
   if (index < range)
     index = range;
@@ -133,17 +136,66 @@ CCM_FUNC THD_FUNCTION(ThreadKnock, arg)
       output_knock[i] = (uint16_t)tmp; // 16 bits minus the 2 fractional bits
     }
 
-    uint16_t knock_value = calculateKnockIntensity(
-                                                   settings.knock_freq,
-                                                   settings.knock_ratio,
-                                                   FFT_FREQ,
-                                                   output_knock,
-                                                   sizeof(output_knock));
+    knock_value = calculateKnockIntensity(
+                                          settings.knock_freq,
+                                          settings.knock_ratio,
+                                          FFT_FREQ,
+                                          output_knock,
+                                          sizeof(output_knock));
+    chEvtBroadcast(&evt_knock_result_rdy);
+
   }
   return;
 }
 
+static THD_WORKING_AREA(waThreadKnockIntegrator, 128);
+CCM_FUNC THD_FUNCTION(ThreadKnockIntegrator, arg)
+{
+  (void)arg;
+  (void)waThreadKnockIntegrator;
+  chRegSetThreadName("Knock Integrator");
+
+  /* Events registration.*/
+  event_listener_t el0;
+  chEvtRegister(&evt_knock_result_rdy, &el0, 0);
+
+  while (TRUE)
+  {
+    uint16_t knock_int = 0, int_cnt = 0;
+    while (chEvtWaitOne(EVENT_MASK(0)) == 1 && sampling_enabled)
+    {
+      // TODO: real integrator
+      knock_int += (knock_value >> 4);
+      knock_int /= 2;
+      int_cnt++;
+
+      dacPutChannelX(&DACD2, 0, knock_int); // This sets the knock output DAC to our value.
+    }
+  }
+}
+
+static void sample_cb(void *arg)
+{
+  (void)arg;
+
+  chSysLockFromISR();
+  if (palReadLine(LINE_SAMPLE) == PAL_HIGH) {
+    sampling_enabled = true;
+  }
+  else {
+    sampling_enabled = false;
+  }
+  chSysUnlockFromISR();
+}
+
 void createKnockThread(void)
 {
-      chThdCreateStatic(waThreadKnock, sizeof(waThreadKnock), NORMALPRIO, ThreadKnock, NULL);
+  /* Events initialization. */
+  chEvtObjectInit(&evt_knock_result_rdy);
+
+  chThdCreateStatic(waThreadKnock, sizeof(waThreadKnock), NORMALPRIO, ThreadKnock, NULL);
+  chThdCreateStatic(waThreadKnockIntegrator, sizeof(waThreadKnockIntegrator), NORMALPRIO, ThreadKnockIntegrator, NULL);
+
+  palEnableLineEvent(LINE_SAMPLE, PAL_EVENT_MODE_BOTH_EDGES);
+  palSetLineCallback(LINE_SAMPLE, sample_cb, NULL);
 }

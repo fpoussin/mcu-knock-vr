@@ -86,6 +86,26 @@ static const OPAMPConfig opamp4_conf = {
 
 
 /*
+ * CPU Load Monitoring thread.
+ */
+static THD_WORKING_AREA(waThreadMonitor, 128);
+static THD_FUNCTION(ThreadMonitor, arg)
+{
+  (void)arg;
+  chRegSetThreadName("Monitor");
+
+  DWT->CTRL |= DWT_CTRL_EXCEVTENA_Msk;
+
+  // TODO
+  while (TRUE)
+  {
+
+    chThdSleepMilliseconds(1000);
+  }
+  return;
+}
+
+/*
  * Application entry point.
  */
 int main(void) {
@@ -125,6 +145,8 @@ int main(void) {
 
   createKnockThread();
   createVrThreads();
+
+  chThdCreateStatic(waThreadMonitor, sizeof(waThreadMonitor), NORMALPRIO+10, ThreadMonitor, NULL);
 
   /*
    * Normal main() thread activity.
