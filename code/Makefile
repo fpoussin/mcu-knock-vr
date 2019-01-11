@@ -25,7 +25,7 @@ endif
 
 # Linker extra options here.
 ifeq ($(USE_LDOPT),)
-  USE_LDOPT = 
+  USE_LDOPT = --print-memory-usage
 endif
 
 # Enable this if you want link time optimizations (LTO)
@@ -113,6 +113,7 @@ CSRC = $(ALLCSRC) \
        vr.c \
        ipc.c \
        settings.c \
+       usb_config.c \
        main.c
 
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global
@@ -205,7 +206,7 @@ UINCDIR =
 ULIBDIR = cm4-dsp-lib
 
 # List all user libraries here
-ULIBS = -lmath_cm4f
+ULIBS = -lmath_cm4f -lm
 
 #
 # End of user defines

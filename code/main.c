@@ -17,6 +17,7 @@
 #include "ch.h"
 #include "hal.h"
 #include "threads.h"
+#include "usb_config.h"
 
 static const DACConfig dac_conf = {
   .init         = 2047U,

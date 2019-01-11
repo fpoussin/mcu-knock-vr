@@ -11,7 +11,6 @@
  * VR3: ADC3 + COMP 6
  */
 
-
 /* Every 1024 samples at 972.972Khz each, triggers at around 1KHz */
 static void adcCallback(ADCDriver *adcp, adcsample_t *buffer, size_t n)
 {
@@ -105,7 +104,7 @@ CCM_FUNC static THD_FUNCTION(ThreadVR1, arg)
   size_t adc_data_size;
   median_t median;
 
-  median_init(&median, 0 , vr1_pair, VR_SAMPLES);
+  median_init(&median, 0, vr1_pair, VR_SAMPLES);
 
   /* ADC 1 Ch3 Offset. -2048 */
   ADC1->OFR1 = ADC_OFR1_OFFSET1_EN | ADC_OFR1_OFFSET1_CH_0 | ADC_OFR1_OFFSET1_CH_1 | (2048 & 0xFFF);
@@ -140,7 +139,7 @@ CCM_FUNC static THD_FUNCTION(ThreadVR2, arg)
   size_t adc_data_size;
   median_t median;
 
-  median_init(&median, 0 , vr2_pair, VR_SAMPLES);
+  median_init(&median, 0, vr2_pair, VR_SAMPLES);
 
   /* ADC 2 Ch1 Offset. -2048 */
   ADC2->OFR1 = ADC_OFR1_OFFSET1_EN | ADC_OFR1_OFFSET1_CH_0 | (2048 & 0xFFF);
@@ -175,7 +174,7 @@ CCM_FUNC static THD_FUNCTION(ThreadVR3, arg)
   size_t adc_data_size;
   median_t median;
 
-  median_init(&median, 0 , vr3_pair, VR_SAMPLES);
+  median_init(&median, 0, vr3_pair, VR_SAMPLES);
 
   /* ADC 3 Ch3 Offset. -2048 */
   ADC1->OFR1 = ADC_OFR1_OFFSET1_EN | ADC_OFR1_OFFSET1_CH_0 | ADC_OFR1_OFFSET1_CH_1 | (2048 & 0xFFF);

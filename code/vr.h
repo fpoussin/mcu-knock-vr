@@ -4,7 +4,7 @@
 #include "ch.h"
 #include "arm_math.h"
 
-#define VR_SAMPLES 1024
+#define VR_SAMPLES 512
 #define VR_SAMPLE_SPEED
 #define VR_ZERO 1650
 #define VR_MIN 0

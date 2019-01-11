@@ -20,5 +20,7 @@ mcuconf_community.h
 settings.c
 settings.h
 threads.h
+usb_config.c
+usb_config.h
 vr.c
 vr.h
