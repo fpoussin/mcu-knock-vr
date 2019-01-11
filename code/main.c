@@ -88,7 +88,7 @@ static const OPAMPConfig opamp4_conf = {
 /*
  * CPU Load Monitoring thread.
  */
-static THD_WORKING_AREA(waThreadMonitor, 128);
+static THD_WORKING_AREA(waThreadMonitor, 64);
 static THD_FUNCTION(ThreadMonitor, arg)
 {
   (void)arg;

@@ -205,7 +205,7 @@ UINCDIR =
 ULIBDIR = cm4-dsp-lib
 
 # List all user libraries here
-ULIBS = -lmath_cm4f -lm
+ULIBS = -lmath_cm4f
 
 #
 # End of user defines

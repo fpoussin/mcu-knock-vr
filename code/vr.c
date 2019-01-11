@@ -2,6 +2,7 @@
 #include "hal.h"
 #include "ipc.h"
 #include "settings.h"
+#include "median.h"
 
 /*
  * VR peripherals
@@ -92,18 +93,22 @@ static const ADCConversionGroup vr3grpcfg = {
   }
 };
 
+static pair_t vr1_pair[VR_SAMPLES];
 static adcsample_t vr1_samples[VR_SAMPLES];
-static THD_WORKING_AREA(waThreadADC1, 256);
-CCM_FUNC static THD_FUNCTION(ThreadADC1, arg)
+static THD_WORKING_AREA(waThreadVR1, 128);
+CCM_FUNC static THD_FUNCTION(ThreadVR1, arg)
 {
   (void)arg;
-  chRegSetThreadName("ADC1");
+  chRegSetThreadName("VR1");
 
   adcsample_t * adc_data_ptr;
   size_t adc_data_size;
+  median_t median;
 
-  /* ADC 1 Ch1 Offset. -2048 */
-  ADC1->OFR1 = ADC_OFR1_OFFSET1_EN | ADC_OFR1_OFFSET1_CH_0 | (2048 & 0xFFF);
+  median_init(&median, 0 , vr1_pair, VR_SAMPLES);
+
+  /* ADC 1 Ch3 Offset. -2048 */
+  ADC1->OFR1 = ADC_OFR1_OFFSET1_EN | ADC_OFR1_OFFSET1_CH_0 | ADC_OFR1_OFFSET1_CH_1 | (2048 & 0xFFF);
   adcStartConversion(&ADCD1, &vr1grpcfg, vr1_samples, VR_SAMPLES);
 
   while (TRUE)
@@ -111,49 +116,69 @@ CCM_FUNC static THD_FUNCTION(ThreadADC1, arg)
     while (!recvFreeSamples(&vr1_mb, (void*)&adc_data_ptr, &adc_data_size))
       chThdSleepMilliseconds(5);
 
-
-
+    /* Filtering and finding min/max */
+    uint16_t val, min, max = 0;
+    for (uint16_t i = 0; i < VR_SAMPLES; i++)
+    {
+      val = median_filter(&median, adc_data_ptr[i]);
+      if (val > max) max = val;
+      if (val < min) min = val;
+    }
   }
 
 }
 
+static pair_t vr2_pair[VR_SAMPLES];
 static adcsample_t vr2_samples[VR_SAMPLES];
-static THD_WORKING_AREA(waThreadADC2, 256);
-CCM_FUNC static THD_FUNCTION(ThreadADC2, arg)
+static THD_WORKING_AREA(waThreadVR2, 128);
+CCM_FUNC static THD_FUNCTION(ThreadVR2, arg)
 {
   (void)arg;
-  chRegSetThreadName("ADC1");
+  chRegSetThreadName("VR2");
 
   adcsample_t * adc_data_ptr;
   size_t adc_data_size;
+  median_t median;
 
-  /* ADC 1 Ch1 Offset. -2048 */
-  ADC1->OFR1 = ADC_OFR1_OFFSET1_EN | ADC_OFR1_OFFSET1_CH_0 | (2048 & 0xFFF);
-  adcStartConversion(&ADCD1, &vr2grpcfg, vr2_samples, VR_SAMPLES);
+  median_init(&median, 0 , vr2_pair, VR_SAMPLES);
+
+  /* ADC 2 Ch1 Offset. -2048 */
+  ADC2->OFR1 = ADC_OFR1_OFFSET1_EN | ADC_OFR1_OFFSET1_CH_0 | (2048 & 0xFFF);
+  adcStartConversion(&ADCD2, &vr2grpcfg, vr2_samples, VR_SAMPLES);
 
   while (TRUE)
   {
-    while (!recvFreeSamples(&vr1_mb, (void*)&adc_data_ptr, &adc_data_size))
+    while (!recvFreeSamples(&vr2_mb, (void*)&adc_data_ptr, &adc_data_size))
       chThdSleepMilliseconds(5);
 
-
-
+    /* Filtering and finding min/max */
+    uint16_t val, min, max = 0;
+    for (uint16_t i = 0; i < VR_SAMPLES; i++)
+    {
+      val = median_filter(&median, adc_data_ptr[i]);
+      if (val > max) max = val;
+      if (val < min) min = val;
+    }
   }
 
 }
 
+static pair_t vr3_pair[VR_SAMPLES];
 static adcsample_t vr3_samples[VR_SAMPLES];
-static THD_WORKING_AREA(waThreadADC3, 256);
-CCM_FUNC static THD_FUNCTION(ThreadADC3, arg)
+static THD_WORKING_AREA(waThreadVR3, 128);
+CCM_FUNC static THD_FUNCTION(ThreadVR3, arg)
 {
   (void)arg;
-  chRegSetThreadName("ADC1");
+  chRegSetThreadName("VR3");
 
   adcsample_t * adc_data_ptr;
   size_t adc_data_size;
+  median_t median;
 
-  /* ADC 1 Ch1 Offset. -2048 */
-  ADC1->OFR1 = ADC_OFR1_OFFSET1_EN | ADC_OFR1_OFFSET1_CH_0 | (2048 & 0xFFF);
+  median_init(&median, 0 , vr3_pair, VR_SAMPLES);
+
+  /* ADC 3 Ch3 Offset. -2048 */
+  ADC1->OFR1 = ADC_OFR1_OFFSET1_EN | ADC_OFR1_OFFSET1_CH_0 | ADC_OFR1_OFFSET1_CH_1 | (2048 & 0xFFF);
   adcStartConversion(&ADCD1, &vr3grpcfg, vr3_samples, VR_SAMPLES);
 
   while (TRUE)
@@ -161,15 +186,21 @@ CCM_FUNC static THD_FUNCTION(ThreadADC3, arg)
     while (!recvFreeSamples(&vr3_mb, (void*)&adc_data_ptr, &adc_data_size))
       chThdSleepMilliseconds(5);
 
-
-
+    /* Filtering and finding min/max */
+    uint16_t val, min, max = 0;
+    for (uint16_t i = 0; i < VR_SAMPLES; i++)
+    {
+      val = median_filter(&median, adc_data_ptr[i]);
+      if (val > max) max = val;
+      if (val < min) min = val;
+    }
   }
 
 }
 
 void createVrThreads(void)
 {
-    chThdCreateStatic(waThreadADC1, sizeof(waThreadADC1), NORMALPRIO, ThreadADC1, NULL);
-    chThdCreateStatic(waThreadADC2, sizeof(waThreadADC2), NORMALPRIO, ThreadADC2, NULL);
-    chThdCreateStatic(waThreadADC3, sizeof(waThreadADC3), NORMALPRIO, ThreadADC3, NULL);
+    chThdCreateStatic(waThreadVR1, sizeof(waThreadVR1), NORMALPRIO, ThreadVR1, NULL);
+    chThdCreateStatic(waThreadVR2, sizeof(waThreadVR2), NORMALPRIO, ThreadVR2, NULL);
+    chThdCreateStatic(waThreadVR3, sizeof(waThreadVR3), NORMALPRIO, ThreadVR3, NULL);
 }

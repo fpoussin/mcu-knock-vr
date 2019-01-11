@@ -10,7 +10,7 @@
  */
 
 static bool sampling_enabled = false;
-static adcsample_t knock_samples[2048];
+static adcsample_t knock_samples[FFT_SAMPLES * 2];
 static uint16_t knock_value;
 static EVENTSOURCE_DECL(evt_knock_result_rdy);
 
