@@ -267,7 +267,7 @@ SECTIONS
     {
         . = ALIGN(8);
         __heap_base__ = .;
-        . = ORIGIN(HEAP_RAM) + LENGTH(HEAP_RAM);
+        //. = ORIGIN(HEAP_RAM) + LENGTH(HEAP_RAM); // We don't need HEAP, and we want to see remaining memory.
         __heap_end__ = .;
     } > HEAP_RAM
 }

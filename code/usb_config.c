@@ -569,12 +569,18 @@ static void usb_event(USBDriver *usbp, usbevent_t event) {
     chSysLockFromISR();
 
     /* Disconnection event on suspend.*/
-    sduDisconnectI(&SDU1);
-    sduDisconnectI(&SDU2);
+    sduSuspendHookI(&SDU1);
+    sduSuspendHookI(&SDU2);
 
     chSysUnlockFromISR();
     return;
   case USB_EVENT_WAKEUP:
+    chSysLockFromISR();
+
+    sduWakeupHookI(&SDU1);
+    sduWakeupHookI(&SDU2);
+
+    chSysUnlockFromISR();
     return;
   case USB_EVENT_STALLED:
     return;
