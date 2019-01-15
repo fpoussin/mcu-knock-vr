@@ -173,6 +173,12 @@ SECTIONS
         __ram4_init__ = .;
         KEEP(*(.ram4_init))
         KEEP(*(.ram4_init.*))
+        *(.text.Vector*)
+        /* *chcore*.o */
+        /* *(.text._port*) */
+        *(.text.arm_*fft*)
+        *(.text.arm_cmplx*)
+        *(.text.median_filter)
         . = ALIGN(4);
     } > ram4 AT > RAM_INIT_FLASH_LMA
 

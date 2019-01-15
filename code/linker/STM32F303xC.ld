@@ -81,5 +81,8 @@ REGION_ALIAS("BSS_RAM", ram0);
 /* RAM region to be used for the default heap.*/
 REGION_ALIAS("HEAP_RAM", ram0);
 
+/* Core coupled memory */
+REGION_ALIAS("CCM_RAM", ram4);
+
 /* Generic rules inclusion.*/
 INCLUDE rules.ld

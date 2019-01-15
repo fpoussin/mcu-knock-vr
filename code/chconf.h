@@ -28,6 +28,9 @@
 #ifndef CHCONF_H
 #define CHCONF_H
 
+#define CORTEX_ENABLE_WFI_IDLE TRUE
+
+
 #define _CHIBIOS_RT_CONF_
 #define _CHIBIOS_RT_CONF_VER_5_1_
 

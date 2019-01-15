@@ -18,10 +18,11 @@ ENTRY(Reset_Handler)
 
 SECTIONS
 {
+
     .vectors : ALIGN(16)
     {
         KEEP(*(.vectors))
-    } > VECTORS_FLASH AT > VECTORS_FLASH_LMA
+    } > CCM_RAM AT > VECTORS_FLASH_LMA
 
     .xtors : ALIGN(4)
     {

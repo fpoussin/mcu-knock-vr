@@ -287,3 +287,17 @@ bool usb_lld_disconnect_bus(USBDriver *usbp) {
 void boardInit(void) {
 
 }
+
+/* Error handlers */
+
+void HardFault_Handler() {
+    while (1);
+}
+
+void BusFault_Handler () {
+    while (1);
+}
+
+void UsageFault_Handler () {
+    while (1);
+}
