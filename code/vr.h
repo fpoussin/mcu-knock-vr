@@ -10,4 +10,11 @@
 #define VR_MIN 0
 #define VR_MAX 3300
 
+extern uint16_t vr1_min;
+extern uint16_t vr1_max;
+extern uint16_t vr2_min;
+extern uint16_t vr2_max;
+extern uint16_t vr3_min;
+extern uint16_t vr3_max;
+
 #endif

@@ -4,6 +4,14 @@
 #include "settings.h"
 #include "median.h"
 
+
+uint16_t vr1_min = 0;
+uint16_t vr1_max = 0;
+uint16_t vr2_min = 0;
+uint16_t vr2_max = 0;
+uint16_t vr3_min = 0;
+uint16_t vr3_max = 0;
+
 /*
  * VR peripherals
  * VR1: ADC1 + COMP 1
@@ -113,7 +121,7 @@ CCM_FUNC static THD_FUNCTION(ThreadVR1, arg)
   while (TRUE)
   {
     while (!recvFreeSamples(&vr1_mb, (void*)&adc_data_ptr, &adc_data_size))
-      chThdSleepMilliseconds(5);
+      chThdSleepMicroseconds(1000);
 
     /* Filtering and finding min/max */
     uint16_t val, min, max = 0;
@@ -123,6 +131,8 @@ CCM_FUNC static THD_FUNCTION(ThreadVR1, arg)
       if (val > max) max = val;
       if (val < min) min = val;
     }
+    vr1_min = min;
+    vr1_max = max;
   }
 
 }
@@ -148,7 +158,7 @@ CCM_FUNC static THD_FUNCTION(ThreadVR2, arg)
   while (TRUE)
   {
     while (!recvFreeSamples(&vr2_mb, (void*)&adc_data_ptr, &adc_data_size))
-      chThdSleepMilliseconds(5);
+      chThdSleepMicroseconds(1000);
 
     /* Filtering and finding min/max */
     uint16_t val, min, max = 0;
@@ -158,6 +168,8 @@ CCM_FUNC static THD_FUNCTION(ThreadVR2, arg)
       if (val > max) max = val;
       if (val < min) min = val;
     }
+    vr2_min = min;
+    vr2_max = max;
   }
 
 }
@@ -183,7 +195,7 @@ CCM_FUNC static THD_FUNCTION(ThreadVR3, arg)
   while (TRUE)
   {
     while (!recvFreeSamples(&vr3_mb, (void*)&adc_data_ptr, &adc_data_size))
-      chThdSleepMilliseconds(5);
+      chThdSleepMicroseconds(1000);
 
     /* Filtering and finding min/max */
     uint16_t val, min, max = 0;
@@ -193,6 +205,8 @@ CCM_FUNC static THD_FUNCTION(ThreadVR3, arg)
       if (val > max) max = val;
       if (val < min) min = val;
     }
+    vr3_min = min;
+    vr3_max = max;
   }
 
 }
