@@ -429,7 +429,7 @@ static const USBDescriptor *get_descriptor(USBDriver *usbp,
       case USB_DESCRIPTOR_STRING:
         if (dindex < 6)
           return &usb_strings[dindex];
-        else if (dindex == 0xee) /* WinUSB */
+        if (dindex == 0xee) /* WinUSB */
           return &usb_winusb_descriptor;
       case USB_DESCRIPTOR_DEVICE_QUALIFIER: /* High speed - not needed  */
         return NULL;
