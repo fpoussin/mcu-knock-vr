@@ -34,7 +34,7 @@ void setupIPC(void)
       chPoolFree(&samples_pool, &samples_messages[i]);
 }
 
-CCM_FUNC bool allocSendSamplesI(mailbox_t* mb, void * buffer, size_t size)
+bool allocSendSamplesI(mailbox_t* mb, void * buffer, size_t size)
 {
   if (buffer == NULL) return false;
 
@@ -49,7 +49,7 @@ CCM_FUNC bool allocSendSamplesI(mailbox_t* mb, void * buffer, size_t size)
   return true;
 }
 
-CCM_FUNC bool recvFreeSamples(mailbox_t* mb, void ** buffer, size_t * size, systime_t timeout)
+bool recvFreeSamples(mailbox_t* mb, void ** buffer, size_t * size, systime_t timeout)
 {
   msg_t msg;
   samples_message_t data;

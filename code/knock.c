@@ -205,6 +205,7 @@ void createKnockThread(void)
   adcStart(&ADCD4, NULL);
 
   dacStart(&DACD2, &dac_conf);
+  dacPutChannelX(&DACD2, 0, 0); // This sets knock output to 0;
 
   /* Events initialization. */
   chEvtObjectInit(&evt_knock_result_rdy);

@@ -45,35 +45,101 @@ static struct vr_threshold_valid
  * CALLBACKS
  */
 
-CCM_FUNC static void comp_cb(COMPDriver *comp) {
 
+/*
+ * Watchdog timeout callback
+ * This happens when no output was generated before the timer completes
+ * We reset the thresholds to default values
+ */
+static void gpt_cb(GPTDriver *gptd)
+{
+  if (gptd == &GPTD3)
+  {
+    vr_threshold.vr1.low = VR_DEFAULT_NEG_THRESHOLD;
+    vr_threshold.vr1.high = VR_DEFAULT_POS_THRESHOLD;
+    vr_threshold_valid.vr1 = false;
+  }
+  else if (gptd == &GPTD4)
+  {
+    vr_threshold.vr2.low = VR_DEFAULT_NEG_THRESHOLD;
+    vr_threshold.vr2.high = VR_DEFAULT_POS_THRESHOLD;
+    vr_threshold_valid.vr2 = false;
+  }
+  else if (gptd == &GPTD7)
+  {
+    vr_threshold.vr3.low = VR_DEFAULT_NEG_THRESHOLD;
+    vr_threshold.vr3.high = VR_DEFAULT_POS_THRESHOLD;
+    vr_threshold_valid.vr3 = false;
+  }
+  gptStartOneShot(gptd, gptd->config->frequency / VR_DEFAULT_THRESHOLD_WATCHDOG);
+}
+
+static void comp_cb(COMPDriver *comp)
+{
   /* Check if output is high (rising) */
-  if (comp->reg->CSR & COMP_CSR_COMPxOUT) {
-
+  if (comp->reg->CSR & COMP_CSR_COMPxOUT)
+  {
     /* Set new thresholds to 80% of previous peaks */
     if (comp == &COMPD1)
     {
+      if (vr_threshold_valid.vr1)
+      {
+        // Get last interval, set timeout to default;
+        gptcnt_t cnt = gptGetCounterX(&GPTD3);
+        gptStartOneShot(&GPTD3, cnt * VR_DEFAULT_THRESHOLD_MULT);
+      }
+      else
+      {
+        // In case of previous timeout or 1st trigger, set max value.
+        gptStartOneShot(&GPTD3, 65535);
+      }
+
       vr_threshold.vr1.low = (uint16_t)((float)vr_peaks.vr1.low * 1.2f);
       vr_threshold.vr1.high = (uint16_t)((float)vr_peaks.vr1.high * 0.8f);
       vr_threshold_valid.vr1 = false;
     }
     else if (comp == &COMPD2)
     {
+      if (vr_threshold_valid.vr2)
+      {
+        // Get last interval, set timeout to default;
+        gptcnt_t cnt = gptGetCounterX(&GPTD4);
+        gptStartOneShot(&GPTD4, cnt * VR_DEFAULT_THRESHOLD_MULT);
+      }
+      else
+      {
+        // In case of previous timeout or 1st trigger, set max value.
+        gptStartOneShot(&GPTD4, 65535);
+      }
+
       vr_threshold.vr2.low = (uint16_t)((float)vr_peaks.vr2.low * 1.2f);
       vr_threshold.vr2.high = (uint16_t)((float)vr_peaks.vr2.high * 0.8f);
       vr_threshold_valid.vr2 = false;
     }
     else if (comp == &COMPD6)
     {
+      if (vr_threshold_valid.vr3)
+      {
+        // Get last interval, set timeout to default;
+        gptcnt_t cnt = gptGetCounterX(&GPTD7);
+        gptStartOneShot(&GPTD7, cnt * VR_DEFAULT_THRESHOLD_MULT);
+      }
+      else
+      {
+        // In case of previous timeout or 1st trigger, set max value.
+        gptStartOneShot(&GPTD7, 65535);
+      }
+
       vr_threshold.vr3.low = (uint16_t)((float)vr_peaks.vr3.low * 1.2f);
       vr_threshold.vr3.high = (uint16_t)((float)vr_peaks.vr3.high * 0.8f);
       vr_threshold_valid.vr3 = false;
     }
+
   }
 }
 
 /* Every 1024 samples at 972.972Khz each, triggers at around 1KHz */
-CCM_FUNC static void adcCallback(ADCDriver *adcp, adcsample_t *buffer, size_t n)
+static void adcCallback(ADCDriver *adcp, adcsample_t *buffer, size_t n)
 {
   // Check for min/max in the ADC thread
   chSysLockFromISR();
@@ -96,6 +162,39 @@ CCM_FUNC static void adcCallback(ADCDriver *adcp, adcsample_t *buffer, size_t n)
  * Peripheral configs
  */
 
+/*
+ * GPT3 configuration.
+ * Watchdog for VR1 peaks
+ */
+static const GPTConfig gpt3cfg = {
+  .frequency    = 30000U,
+  .callback     = gpt_cb,
+  .cr2          = 0U,
+  .dier         = 0U
+};
+
+/*
+ * GPT4 configuration.
+ * Watchdog for VR2 peaks
+ */
+static const GPTConfig gpt4cfg = {
+  .frequency    = 30000U,
+  .callback     = gpt_cb,
+  .cr2          = 0U,
+  .dier         = 0U
+};
+
+/*
+ * GPT7 configuration.
+ * Watchdog for VR3 peaks
+ */
+static const GPTConfig gpt7cfg = {
+  .frequency    = 30000U,
+  .callback     = gpt_cb,
+  .cr2          = 0U,
+  .dier         = 0U
+};
+
 static const DACConfig dac_conf = {
   .init         = 2047U,
   .datamode     = DAC_DHRM_12BIT_RIGHT,
@@ -108,8 +207,9 @@ static const COMPConfig comp1_conf = {
   COMP_IRQ_RISING,
   comp_cb,
   STM32_COMP_InvertingInput_DAC1OUT1 |
+  STM32_COMP_BlankingSrce_None |
   STM32_COMP_NonInvertingInput_IO1 | // PA1
-  STM32_COMP_Hysteresis_Medium |
+  STM32_COMP_Hysteresis_Medium | // 15mV
   STM32_COMP_OutputLevel_High |
   STM32_COMP_Mode_HighSpeed // CSR
 };
@@ -120,8 +220,9 @@ static const COMPConfig comp2_conf = {
   COMP_IRQ_RISING,
   comp_cb,
   STM32_COMP_InvertingInput_DAC1OUT1 |
+  STM32_COMP_BlankingSrce_None |
   STM32_COMP_NonInvertingInput_IO1 | // PA7
-  STM32_COMP_Hysteresis_Medium |
+  STM32_COMP_Hysteresis_Medium | // 15mV
   STM32_COMP_OutputLevel_High |
   STM32_COMP_Mode_HighSpeed // CSR
 };
@@ -132,8 +233,9 @@ static const COMPConfig comp6_conf = {
   COMP_IRQ_RISING,
   comp_cb,
   STM32_COMP_InvertingInput_DAC1OUT1 |
+  STM32_COMP_BlankingSrce_None |
   STM32_COMP_NonInvertingInput_IO2 | // PB11
-  STM32_COMP_Hysteresis_Medium |
+  STM32_COMP_Hysteresis_Medium | // 15mV
   STM32_COMP_OutputLevel_High |
   STM32_COMP_Mode_HighSpeed // CSR
 };
@@ -343,6 +445,9 @@ void createVrThreads(void)
   compStart(&COMPD1, &comp1_conf);
   compStart(&COMPD2, &comp2_conf);
   compStart(&COMPD6, &comp6_conf);
+  gptStart(&GPTD3, &gpt3cfg);
+  gptStart(&GPTD4, &gpt4cfg);
+  gptStart(&GPTD7, &gpt7cfg);
 
   dacPutChannelX(&DACD1, 0, 2048); // This sets the biasing for our sensors and comparators.
   compEnable(&COMPD1);
