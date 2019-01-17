@@ -17,20 +17,28 @@ static struct vr_peaks
   vr_peak_t vr3;
 } vr_peaks = {{0,0},{0,0},{0,0}};
 
-static struct vr_threshold
+static struct
 {
   vr_peak_t vr1;
   vr_peak_t vr2;
   vr_peak_t vr3;
 } vr_threshold = {{0,4095},{0,4095},{0,4095}};
 
-static struct vr_threshold_valid
+static struct
 {
   bool vr1:1;
   bool vr2:1;
   bool vr3:1;
   char pad:5;
 } vr_threshold_valid = {0,0,0,0};
+
+static struct
+{
+  bool vr1:1;
+  bool vr2:1;
+  bool vr3:1;
+  char pad:5;
+} vr_time_valid = {0,0,0,0};
 
 /*
  * Peripherals
@@ -51,28 +59,52 @@ static struct vr_threshold_valid
  * This happens when no output was generated before the timer completes
  * We reset the thresholds to default values
  */
-static void gpt_cb(GPTDriver *gptd)
+static void pwm_ovfl_cb(PWMDriver *pwmp)
 {
-  if (gptd == &GPTD3)
+  if (pwmp == &PWMD3)
   {
     vr_threshold.vr1.low = VR_DEFAULT_NEG_THRESHOLD;
     vr_threshold.vr1.high = VR_DEFAULT_POS_THRESHOLD;
     vr_threshold_valid.vr1 = false;
+    vr_time_valid.vr1 = false;
   }
-  else if (gptd == &GPTD4)
+  else if (pwmp == &PWMD4)
   {
     vr_threshold.vr2.low = VR_DEFAULT_NEG_THRESHOLD;
     vr_threshold.vr2.high = VR_DEFAULT_POS_THRESHOLD;
     vr_threshold_valid.vr2 = false;
+    vr_time_valid.vr2 = false;
   }
-  else if (gptd == &GPTD7)
+  else if (pwmp == &PWMD8)
   {
     vr_threshold.vr3.low = VR_DEFAULT_NEG_THRESHOLD;
     vr_threshold.vr3.high = VR_DEFAULT_POS_THRESHOLD;
     vr_threshold_valid.vr3 = false;
+    vr_time_valid.vr3 = false;
   }
-  gptStartOneShot(gptd, gptd->config->frequency / VR_DEFAULT_THRESHOLD_WATCHDOG);
 }
+
+/*
+ * VR validator timer
+ * We are now far enough in the cycle to enable the output
+ */
+static void pwm_oc_cb(PWMDriver *pwmp)
+{
+  if (pwmp == &PWMD3)
+  {
+    vr_time_valid.vr1 = true;
+  }
+  else if (pwmp == &PWMD4)
+  {
+    vr_time_valid.vr2 = true;
+  }
+  else if (pwmp == &PWMD8)
+  {
+    vr_time_valid.vr3 = true;
+  }
+}
+
+// TODO: Actually ignore if invalid, let the timers roll
 
 static void comp_cb(COMPDriver *comp)
 {
@@ -84,15 +116,16 @@ static void comp_cb(COMPDriver *comp)
     {
       if (vr_threshold_valid.vr1)
       {
-        // Get last interval, set timeout to default;
-        gptcnt_t cnt = gptGetCounterX(&GPTD3);
-        gptStartOneShot(&GPTD3, cnt * VR_DEFAULT_THRESHOLD_MULT);
+        // Get last interval, set timeout;
+        uint32_t cnt = PWMD3.tim->CNT;
+        PWMD3.tim->CCR[0] = cnt * VR_DEFAULT_THRESHOLD_MULT;
       }
       else
       {
         // In case of previous timeout or 1st trigger, set max value.
-        gptStartOneShot(&GPTD3, 65535);
+        PWMD3.tim->CCR[0] = 0xFFFF;
       }
+      PWMD3.tim->CNT = 0; // Reset timer
 
       vr_threshold.vr1.low = (uint16_t)((float)vr_peaks.vr1.low * 1.2f);
       vr_threshold.vr1.high = (uint16_t)((float)vr_peaks.vr1.high * 0.8f);
@@ -102,15 +135,16 @@ static void comp_cb(COMPDriver *comp)
     {
       if (vr_threshold_valid.vr2)
       {
-        // Get last interval, set timeout to default;
-        gptcnt_t cnt = gptGetCounterX(&GPTD4);
-        gptStartOneShot(&GPTD4, cnt * VR_DEFAULT_THRESHOLD_MULT);
+        // Get last interval, set timeout;
+        uint32_t cnt = PWMD4.tim->CNT;
+        PWMD4.tim->CCR[0] = cnt * VR_DEFAULT_THRESHOLD_MULT;
       }
       else
       {
         // In case of previous timeout or 1st trigger, set max value.
-        gptStartOneShot(&GPTD4, 65535);
+        PWMD4.tim->CCR[0] = 0xFFFF;
       }
+      PWMD4.tim->CNT = 0; // Reset timer
 
       vr_threshold.vr2.low = (uint16_t)((float)vr_peaks.vr2.low * 1.2f);
       vr_threshold.vr2.high = (uint16_t)((float)vr_peaks.vr2.high * 0.8f);
@@ -120,20 +154,25 @@ static void comp_cb(COMPDriver *comp)
     {
       if (vr_threshold_valid.vr3)
       {
-        // Get last interval, set timeout to default;
-        gptcnt_t cnt = gptGetCounterX(&GPTD7);
-        gptStartOneShot(&GPTD7, cnt * VR_DEFAULT_THRESHOLD_MULT);
+        // Get last interval, set timeout;
+        uint32_t cnt = PWMD8.tim->CNT;
+        PWMD8.tim->CCR[0] = cnt * VR_DEFAULT_THRESHOLD_MULT;
       }
       else
       {
         // In case of previous timeout or 1st trigger, set max value.
-        gptStartOneShot(&GPTD7, 65535);
+        PWMD8.tim->CCR[0] = 0xFFFF;
       }
+      PWMD8.tim->CNT = 0; // Reset timer
 
       vr_threshold.vr3.low = (uint16_t)((float)vr_peaks.vr3.low * 1.2f);
       vr_threshold.vr3.high = (uint16_t)((float)vr_peaks.vr3.high * 0.8f);
       vr_threshold_valid.vr3 = false;
     }
+
+  }
+  else // LOW
+  {
 
   }
 }
@@ -163,38 +202,58 @@ static void adcCallback(ADCDriver *adcp, adcsample_t *buffer, size_t n)
  */
 
 /*
- * GPT3 configuration.
- * Watchdog for VR1 peaks
+ * PWM3 configuration.
+ * Watchdog (overflow) and validator (channel 1) for VR1 peaks
  */
-static const GPTConfig gpt3cfg = {
-  .frequency    = 30000U,
-  .callback     = gpt_cb,
-  .cr2          = 0U,
-  .dier         = 0U
+static PWMConfig pwm3cfg = {
+  30000,                                    /* 30kHz PWM clock frequency.   */
+  0xFFFF,                                   /* Initial PWM period maxed out.       */
+  pwm_ovfl_cb,
+  {
+   {PWM_OUTPUT_DISABLED, pwm_oc_cb},
+   {PWM_OUTPUT_DISABLED, NULL},
+   {PWM_OUTPUT_DISABLED, NULL},
+   {PWM_OUTPUT_DISABLED, NULL}
+  },
+  0,
+  0
 };
 
 /*
- * GPT4 configuration.
- * Watchdog for VR2 peaks
+ * PWM4 configuration.
+ * Watchdog (overflow) and validator (channel 1) for VR1 peaks
  */
-static const GPTConfig gpt4cfg = {
-  .frequency    = 30000U,
-  .callback     = gpt_cb,
-  .cr2          = 0U,
-  .dier         = 0U
+static PWMConfig pwm4cfg = {
+  30000,                                    /* 30kHz PWM clock frequency.   */
+  0xFFFF,                                   /* Initial PWM period maxed out.       */
+  pwm_ovfl_cb,
+  {
+   {PWM_OUTPUT_DISABLED, pwm_oc_cb},
+   {PWM_OUTPUT_DISABLED, NULL},
+   {PWM_OUTPUT_DISABLED, NULL},
+   {PWM_OUTPUT_DISABLED, NULL}
+  },
+  0,
+  0
 };
 
 /*
- * GPT7 configuration.
- * Watchdog for VR3 peaks
+ * PWM8 configuration.
+ * Watchdog (overflow) and validator (channel 1) for VR1 peaks
  */
-static const GPTConfig gpt7cfg = {
-  .frequency    = 30000U,
-  .callback     = gpt_cb,
-  .cr2          = 0U,
-  .dier         = 0U
+static PWMConfig pwm8cfg = {
+  30000,                                    /* 30kHz PWM clock frequency.   */
+  0xFFFF,                                   /* Initial PWM period maxed out.       */
+  pwm_ovfl_cb,
+  {
+   {PWM_OUTPUT_DISABLED, pwm_oc_cb},
+   {PWM_OUTPUT_DISABLED, NULL},
+   {PWM_OUTPUT_DISABLED, NULL},
+   {PWM_OUTPUT_DISABLED, NULL}
+  },
+  0,
+  0
 };
-
 static const DACConfig dac_conf = {
   .init         = 2047U,
   .datamode     = DAC_DHRM_12BIT_RIGHT,
@@ -204,7 +263,7 @@ static const DACConfig dac_conf = {
 // VR1
 static const COMPConfig comp1_conf = {
   COMP_OUTPUT_NORMAL,
-  COMP_IRQ_RISING,
+  COMP_IRQ_BOTH,
   comp_cb,
   STM32_COMP_InvertingInput_DAC1OUT1 |
   STM32_COMP_BlankingSrce_None |
@@ -217,7 +276,7 @@ static const COMPConfig comp1_conf = {
 // VR2
 static const COMPConfig comp2_conf = {
   COMP_OUTPUT_NORMAL,
-  COMP_IRQ_RISING,
+  COMP_IRQ_BOTH,
   comp_cb,
   STM32_COMP_InvertingInput_DAC1OUT1 |
   STM32_COMP_BlankingSrce_None |
@@ -230,7 +289,7 @@ static const COMPConfig comp2_conf = {
 // VR3
 static const COMPConfig comp6_conf = {
   COMP_OUTPUT_NORMAL,
-  COMP_IRQ_RISING,
+  COMP_IRQ_BOTH,
   comp_cb,
   STM32_COMP_InvertingInput_DAC1OUT1 |
   STM32_COMP_BlankingSrce_None |
@@ -445,9 +504,9 @@ void createVrThreads(void)
   compStart(&COMPD1, &comp1_conf);
   compStart(&COMPD2, &comp2_conf);
   compStart(&COMPD6, &comp6_conf);
-  gptStart(&GPTD3, &gpt3cfg);
-  gptStart(&GPTD4, &gpt4cfg);
-  gptStart(&GPTD7, &gpt7cfg);
+  pwmStart(&PWMD3, &pwm3cfg);
+  pwmStart(&PWMD4, &pwm4cfg);
+  pwmStart(&PWMD8, &pwm8cfg);
 
   dacPutChannelX(&DACD1, 0, 2048); // This sets the biasing for our sensors and comparators.
   compEnable(&COMPD1);
