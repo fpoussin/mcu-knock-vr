@@ -109,7 +109,7 @@ static const COMPConfig comp1_conf = {
   comp_cb,
   STM32_COMP_InvertingInput_DAC1OUT1 |
   STM32_COMP_NonInvertingInput_IO1 | // PA1
-  STM32_COMP_Hysteresis_Low |
+  STM32_COMP_Hysteresis_Medium |
   STM32_COMP_OutputLevel_High |
   STM32_COMP_Mode_HighSpeed // CSR
 };
@@ -121,7 +121,7 @@ static const COMPConfig comp2_conf = {
   comp_cb,
   STM32_COMP_InvertingInput_DAC1OUT1 |
   STM32_COMP_NonInvertingInput_IO1 | // PA7
-  STM32_COMP_Hysteresis_Low |
+  STM32_COMP_Hysteresis_Medium |
   STM32_COMP_OutputLevel_High |
   STM32_COMP_Mode_HighSpeed // CSR
 };
@@ -133,7 +133,7 @@ static const COMPConfig comp6_conf = {
   comp_cb,
   STM32_COMP_InvertingInput_DAC1OUT1 |
   STM32_COMP_NonInvertingInput_IO2 | // PB11
-  STM32_COMP_Hysteresis_Low |
+  STM32_COMP_Hysteresis_Medium |
   STM32_COMP_OutputLevel_High |
   STM32_COMP_Mode_HighSpeed // CSR
 };

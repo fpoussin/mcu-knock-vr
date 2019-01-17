@@ -20,6 +20,15 @@
 #include "usb_config.h"
 
 /*
+ * Watchdog deadline set to 250ms (LSI=40000 / (16 * 1000)).
+ */
+static const WDGConfig wdgcfg = {
+  STM32_IWDG_PR_16,
+  STM32_IWDG_RL(1000),
+  STM32_IWDG_WIN_DISABLED
+};
+
+/*
  * CPU Load Monitoring thread.
  */
 static THD_WORKING_AREA(waThreadMonitor, 64);
@@ -46,6 +55,7 @@ int main(void) {
   halInit();
   chSysInit();
 
+  wdgStart(&WDGD1, &wdgcfg);
   createKnockThread();
   createVrThreads();
 
@@ -55,8 +65,8 @@ int main(void) {
    * Normal main() thread activity.
    */
   while (true) {
-
-    chThdSleepMilliseconds(250);
+    wdgReset(&WDGD1);
+    chThdSleepMilliseconds(100);
   }
   return 0;
 }
