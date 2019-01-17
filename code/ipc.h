@@ -25,6 +25,6 @@ typedef struct {
 
 void setupIPC(void);
 bool allocSendSamplesI(mailbox_t* mb, void * buffer, size_t size);
-bool recvFreeSamples(mailbox_t* mb, void ** buffer, size_t * size);
+bool recvFreeSamples(mailbox_t* mb, void ** buffer, size_t * size, systime_t timeout);
 
 #endif /* IPC_H_ */

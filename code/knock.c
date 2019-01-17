@@ -6,7 +6,9 @@
 
 /*
  * Knock peripherals:
- * ADC4
+ * OPAMP4 (buffer)
+ * ADC4 Ch3
+ * DAC2 (result output)
  */
 
 static bool sampling_enabled = false;
@@ -25,6 +27,17 @@ CCM_FUNC static void adcCallback(ADCDriver *adcp, adcsample_t *buffer, size_t n)
   chSysUnlockFromISR();
 }
 
+static const DACConfig dac_conf = {
+  .init         = 2047U,
+  .datamode     = DAC_DHRM_12BIT_RIGHT,
+  .cr           = 0
+};
+
+static const OPAMPConfig opamp4_conf = {
+  STM32_OPAMP_NonInvertingInput_IO4 | // INP connectd to PB13
+  STM32_OPAMP_InvertingInput_Vout // INM connected to vout (follower)
+};
+
 /* ADC4 Clk is 72Mhz/1 72Mhz  */
 static const ADCConversionGroup adcgrpcfg_knock = {
   TRUE,
@@ -38,13 +51,12 @@ static const ADCConversionGroup adcgrpcfg_knock = {
     0,
   },
   {                                 /* SQR[4]  */
-    ADC_SQR1_SQ1_N(ADC_CHANNEL_IN3),
+    ADC_SQR1_SQ1_N(ADC_CHANNEL_IN3), /* Channel 3 */
     0,
     0,
     0
   }
 };
-
 
 CCM_FUNC static uint16_t calculateKnockIntensity(uint16_t tgtFreq, uint16_t ratio, uint16_t smplFreq, const uint16_t* buffer, uint16_t size)
 {
@@ -105,8 +117,7 @@ CCM_FUNC THD_FUNCTION(ThreadKnock, arg)
 
   while (TRUE)
   {
-    while (!recvFreeSamples(&knock_mb, (void*)&knock_data_ptr, &knock_data_sz))
-      chThdSleepMilliseconds(2);
+    recvFreeSamples(&knock_mb, (void*)&knock_data_ptr, &knock_data_sz, TIME_INFINITE);
 
     /* Copy and convert ADC samples */
     for (i = 0; i < FFT_SIZE * 2; i += 4)
@@ -190,6 +201,11 @@ static void sample_cb(void *arg)
 
 void createKnockThread(void)
 {
+  opampStart(&OPAMPD4, &opamp4_conf);
+  adcStart(&ADCD4, NULL);
+
+  dacStart(&DACD2, &dac_conf);
+
   /* Events initialization. */
   chEvtObjectInit(&evt_knock_result_rdy);
 

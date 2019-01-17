@@ -34,7 +34,7 @@ void setupIPC(void)
       chPoolFree(&samples_pool, &samples_messages[i]);
 }
 
-bool allocSendSamplesI(mailbox_t* mb, void * buffer, size_t size)
+CCM_FUNC bool allocSendSamplesI(mailbox_t* mb, void * buffer, size_t size)
 {
   if (buffer == NULL) return false;
 
@@ -49,15 +49,13 @@ bool allocSendSamplesI(mailbox_t* mb, void * buffer, size_t size)
   return true;
 }
 
-bool recvFreeSamples(mailbox_t* mb, void ** buffer, size_t * size)
+CCM_FUNC bool recvFreeSamples(mailbox_t* mb, void ** buffer, size_t * size, systime_t timeout)
 {
   msg_t msg;
   samples_message_t data;
 
-  if(chMBFetchTimeout(mb, &msg, TIME_IMMEDIATE) != MSG_OK)
+  if(chMBFetchTimeout(mb, &msg, timeout) != MSG_OK)
     return false;
-
-  if (mb == NULL) return false;
 
   data = *(samples_message_t*)mb;
   chPoolFree(&samples_pool, (void*)mb);
