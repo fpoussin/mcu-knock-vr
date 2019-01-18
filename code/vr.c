@@ -4,6 +4,8 @@
 #include "settings.h"
 #include "median.h"
 
+#define VALID_MSK 0x03
+
 typedef struct
 {
   uint16_t high;
@@ -12,8 +14,9 @@ typedef struct
 
 typedef struct
 {
-  bool time;
-  bool peak;
+  uint8_t pad:6;
+  bool time:1;
+  bool peak:1;
 } valid_t;
 
 typedef struct
@@ -21,7 +24,11 @@ typedef struct
   high_low_t threshold;
   high_low_t peak;
   uint16_t min_time;
-  valid_t valid;
+  union {
+    valid_t valid;
+    const uint8_t valid_msk;
+  };
+  uint8_t pad;
 } vr_t;
 
 static vr_t vr1, vr2, vr3;
@@ -130,7 +137,7 @@ static void comp_cb(COMPDriver *comp)
     /* Set new thresholds to 80% of previous peaks, reset validation */
     if (comp == &COMPD1)
     {
-      if (vr1.valid.peak && vr1.valid.peak)
+      if (vr1.valid_msk & VALID_MSK)
       {
         // Get last interval, set timeout;
         uint32_t cnt = pwmCounter(PWMD3);
@@ -144,7 +151,7 @@ static void comp_cb(COMPDriver *comp)
     }
     else if (comp == &COMPD2)
     {
-      if (vr2.valid.peak && vr2.valid.peak)
+      if (vr2.valid_msk & VALID_MSK)
       {
         // Get last interval, set timeout;
         uint32_t cnt = pwmCounter(PWMD4);
@@ -158,7 +165,7 @@ static void comp_cb(COMPDriver *comp)
     }
     else if (comp == &COMPD6)
     {
-      if (vr3.valid.peak && vr3.valid.peak)
+      if (vr3.valid_msk & VALID_MSK)
       {
         // Get last interval, set timeout;
         uint32_t cnt = pwmCounter(PWMD8);
