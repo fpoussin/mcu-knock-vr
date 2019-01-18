@@ -179,6 +179,7 @@ SECTIONS
         *(.text.arm_*fft*)
         *(.text.arm_cmplx*)
         *(.text.median_filter)
+        *(.text.middle_of_3)
         . = ALIGN(4);
     } > ram4 AT > RAM_INIT_FLASH_LMA
 

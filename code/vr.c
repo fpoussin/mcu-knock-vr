@@ -6,39 +6,20 @@
 
 typedef struct
 {
-  uint16_t low;
   uint16_t high;
-} vr_peak_t;
+  uint16_t low;
+} high_low_t;
 
-static struct vr_peaks
+typedef struct
 {
-  vr_peak_t vr1;
-  vr_peak_t vr2;
-  vr_peak_t vr3;
-} vr_peaks = {{0,0},{0,0},{0,0}};
+  high_low_t threshold;
+  high_low_t peak;
+  uint16_t min_time;
+  bool time_valid;
+  bool peak_valid;
+} vr_t;
 
-static struct
-{
-  vr_peak_t vr1;
-  vr_peak_t vr2;
-  vr_peak_t vr3;
-} vr_threshold = {{0,4095},{0,4095},{0,4095}};
-
-static struct
-{
-  bool vr1:1;
-  bool vr2:1;
-  bool vr3:1;
-  char pad:5;
-} vr_threshold_valid = {0,0,0,0};
-
-static struct
-{
-  bool vr1:1;
-  bool vr2:1;
-  bool vr3:1;
-  char pad:5;
-} vr_time_valid = {0,0,0,0};
+static vr_t vr1, vr2, vr3;
 
 /*
  * Peripherals
@@ -48,11 +29,35 @@ static struct
  * DAC1 (bias)
  */
 
+/*
+ * Support functions
+ */
+
+#define pwmRestart(x) pwmEnable(x)
+#define pwmCounter(pwm) pwm.tim->CNT;
+
+inline static void pwmDisable(PWMDriver *pwm)
+{
+  pwm->tim->CR1 &= ~TIM_CR1_CEN;
+}
+
+inline static void pwmEnable(PWMDriver *pwm)
+{
+  pwm->tim->CNT = 0;
+  pwm->tim->CR1 |= TIM_CR1_CEN;
+}
+
+inline static void pwmSetChannel(PWMDriver *pwm, uint8_t channel, uint32_t value)
+{
+  pwmDisable(pwm);
+  pwm->tim->CCR[channel] = value;
+  pwmEnable(pwm);
+}
+
 
 /*
  * CALLBACKS
  */
-
 
 /*
  * Watchdog timeout callback
@@ -63,24 +68,24 @@ static void pwm_ovfl_cb(PWMDriver *pwmp)
 {
   if (pwmp == &PWMD3)
   {
-    vr_threshold.vr1.low = VR_DEFAULT_NEG_THRESHOLD;
-    vr_threshold.vr1.high = VR_DEFAULT_POS_THRESHOLD;
-    vr_threshold_valid.vr1 = false;
-    vr_time_valid.vr1 = false;
+    vr1.threshold.low = VR_DEFAULT_NEG_THRESHOLD;
+    vr1.threshold.high = VR_DEFAULT_POS_THRESHOLD;
+    vr1.peak_valid = false;
+    vr1.time_valid = false;
   }
   else if (pwmp == &PWMD4)
   {
-    vr_threshold.vr2.low = VR_DEFAULT_NEG_THRESHOLD;
-    vr_threshold.vr2.high = VR_DEFAULT_POS_THRESHOLD;
-    vr_threshold_valid.vr2 = false;
-    vr_time_valid.vr2 = false;
+    vr2.threshold.low = VR_DEFAULT_NEG_THRESHOLD;
+    vr2.threshold.high = VR_DEFAULT_POS_THRESHOLD;
+    vr2.peak_valid = false;
+    vr2.time_valid = false;
   }
   else if (pwmp == &PWMD8)
   {
-    vr_threshold.vr3.low = VR_DEFAULT_NEG_THRESHOLD;
-    vr_threshold.vr3.high = VR_DEFAULT_POS_THRESHOLD;
-    vr_threshold_valid.vr3 = false;
-    vr_time_valid.vr3 = false;
+    vr3.threshold.low = VR_DEFAULT_NEG_THRESHOLD;
+    vr3.threshold.high = VR_DEFAULT_POS_THRESHOLD;
+    vr3.peak_valid = false;
+    vr3.time_valid = false;
   }
 }
 
@@ -92,82 +97,65 @@ static void pwm_oc_cb(PWMDriver *pwmp)
 {
   if (pwmp == &PWMD3)
   {
-    vr_time_valid.vr1 = true;
+    vr1.time_valid = true;
   }
   else if (pwmp == &PWMD4)
   {
-    vr_time_valid.vr2 = true;
+    vr2.time_valid = true;
   }
   else if (pwmp == &PWMD8)
   {
-    vr_time_valid.vr3 = true;
+    vr3.time_valid = true;
   }
 }
-
-// TODO: Actually ignore if invalid, let the timers roll
 
 static void comp_cb(COMPDriver *comp)
 {
   /* Check if output is high (rising) */
   if (comp->reg->CSR & COMP_CSR_COMPxOUT)
   {
-    /* Set new thresholds to 80% of previous peaks */
+    /* Set new thresholds to 80% of previous peaks, reset validation */
     if (comp == &COMPD1)
     {
-      if (vr_threshold_valid.vr1)
+      if (vr1.peak_valid && vr1.peak_valid)
       {
         // Get last interval, set timeout;
-        uint32_t cnt = PWMD3.tim->CNT;
-        PWMD3.tim->CCR[0] = cnt * VR_DEFAULT_THRESHOLD_MULT;
-      }
-      else
-      {
-        // In case of previous timeout or 1st trigger, set max value.
-        PWMD3.tim->CCR[0] = 0xFFFF;
-      }
-      PWMD3.tim->CNT = 0; // Reset timer
+        uint32_t cnt = pwmCounter(PWMD3);
+        pwmSetChannel(&PWMD3, 0, cnt * VR_DEFAULT_THRESHOLD_MULT);
 
-      vr_threshold.vr1.low = (uint16_t)((float)vr_peaks.vr1.low * 1.2f);
-      vr_threshold.vr1.high = (uint16_t)((float)vr_peaks.vr1.high * 0.8f);
-      vr_threshold_valid.vr1 = false;
+        vr1.threshold.low = (uint16_t)((float)vr1.peak.low * 1.2f);
+        vr1.threshold.high = (uint16_t)((float)vr1.peak.high * 0.8f);
+        vr1.peak_valid = false;
+        vr1.time_valid = false;
+      }
     }
     else if (comp == &COMPD2)
     {
-      if (vr_threshold_valid.vr2)
+      if (vr2.peak_valid && vr2.peak_valid)
       {
         // Get last interval, set timeout;
-        uint32_t cnt = PWMD4.tim->CNT;
-        PWMD4.tim->CCR[0] = cnt * VR_DEFAULT_THRESHOLD_MULT;
-      }
-      else
-      {
-        // In case of previous timeout or 1st trigger, set max value.
-        PWMD4.tim->CCR[0] = 0xFFFF;
-      }
-      PWMD4.tim->CNT = 0; // Reset timer
+          uint32_t cnt = pwmCounter(PWMD4);
+          pwmSetChannel(&PWMD4, 0, cnt * VR_DEFAULT_THRESHOLD_MULT);
 
-      vr_threshold.vr2.low = (uint16_t)((float)vr_peaks.vr2.low * 1.2f);
-      vr_threshold.vr2.high = (uint16_t)((float)vr_peaks.vr2.high * 0.8f);
-      vr_threshold_valid.vr2 = false;
+        vr2.threshold.low = (uint16_t)((float)vr2.peak.low * 1.2f);
+        vr2.threshold.high = (uint16_t)((float)vr2.peak.high * 0.8f);
+        vr2.peak_valid = false;
+        vr2.time_valid = false;
+      }
     }
     else if (comp == &COMPD6)
     {
-      if (vr_threshold_valid.vr3)
+      if (vr3.peak_valid && vr3.peak_valid)
       {
         // Get last interval, set timeout;
-        uint32_t cnt = PWMD8.tim->CNT;
-        PWMD8.tim->CCR[0] = cnt * VR_DEFAULT_THRESHOLD_MULT;
-      }
-      else
-      {
-        // In case of previous timeout or 1st trigger, set max value.
-        PWMD8.tim->CCR[0] = 0xFFFF;
-      }
-      PWMD8.tim->CNT = 0; // Reset timer
+          uint32_t cnt = pwmCounter(PWMD8);
+          pwmSetChannel(&PWMD8, 0, cnt * VR_DEFAULT_THRESHOLD_MULT);
 
-      vr_threshold.vr3.low = (uint16_t)((float)vr_peaks.vr3.low * 1.2f);
-      vr_threshold.vr3.high = (uint16_t)((float)vr_peaks.vr3.high * 0.8f);
-      vr_threshold_valid.vr3 = false;
+        vr3.threshold.low = (uint16_t)((float)vr3.peak.low * 1.2f);
+        vr3.threshold.high = (uint16_t)((float)vr3.peak.high * 0.8f);
+        vr3.peak_valid = false;
+        vr3.time_valid = false;
+      }
     }
 
   }
@@ -202,10 +190,10 @@ static void adcCallback(ADCDriver *adcp, adcsample_t *buffer, size_t n)
  */
 
 /*
- * PWM3 configuration.
- * Watchdog (overflow) and validator (channel 1) for VR1 peaks
+ * PWM3/4/8 configuration.
+ * Watchdog (overflow) and validator (channel 1) for VR peaks
  */
-static PWMConfig pwm3cfg = {
+static const PWMConfig pwm_cfg = {
   30000,                                    /* 30kHz PWM clock frequency.   */
   0xFFFF,                                   /* Initial PWM period maxed out.       */
   pwm_ovfl_cb,
@@ -219,41 +207,6 @@ static PWMConfig pwm3cfg = {
   0
 };
 
-/*
- * PWM4 configuration.
- * Watchdog (overflow) and validator (channel 1) for VR1 peaks
- */
-static PWMConfig pwm4cfg = {
-  30000,                                    /* 30kHz PWM clock frequency.   */
-  0xFFFF,                                   /* Initial PWM period maxed out.       */
-  pwm_ovfl_cb,
-  {
-   {PWM_OUTPUT_DISABLED, pwm_oc_cb},
-   {PWM_OUTPUT_DISABLED, NULL},
-   {PWM_OUTPUT_DISABLED, NULL},
-   {PWM_OUTPUT_DISABLED, NULL}
-  },
-  0,
-  0
-};
-
-/*
- * PWM8 configuration.
- * Watchdog (overflow) and validator (channel 1) for VR1 peaks
- */
-static PWMConfig pwm8cfg = {
-  30000,                                    /* 30kHz PWM clock frequency.   */
-  0xFFFF,                                   /* Initial PWM period maxed out.       */
-  pwm_ovfl_cb,
-  {
-   {PWM_OUTPUT_DISABLED, pwm_oc_cb},
-   {PWM_OUTPUT_DISABLED, NULL},
-   {PWM_OUTPUT_DISABLED, NULL},
-   {PWM_OUTPUT_DISABLED, NULL}
-  },
-  0,
-  0
-};
 static const DACConfig dac_conf = {
   .init         = 2047U,
   .datamode     = DAC_DHRM_12BIT_RIGHT,
@@ -408,12 +361,18 @@ CCM_FUNC static THD_FUNCTION(ThreadVR1, arg)
       if (val > max) max = val;
       if (val < min) min = val;
     }
-    if (min < vr_peaks.vr1.low)
-        vr_peaks.vr1.low = min;
-    if (max > vr_peaks.vr1.high)
-        vr_peaks.vr1.high = max;
-  }
+    if (min < vr1.peak.low)
+        vr1.peak.low = min;
+    if (max > vr1.peak.high)
+        vr1.peak.high = max;
 
+    if (!vr1.peak_valid)
+    {
+      vr1.peak_valid = \
+             vr1.peak.low <= vr1.threshold.low
+          && vr1.peak.high >= vr1.threshold.high;
+    }
+  }
 }
 
 static pair_t vr2_pair[VR_SAMPLES];
@@ -446,10 +405,17 @@ CCM_FUNC static THD_FUNCTION(ThreadVR2, arg)
       if (val > max) max = val;
       if (val < min) min = val;
     }
-    if (min < vr_peaks.vr2.low)
-        vr_peaks.vr2.low = min;
-    if (max > vr_peaks.vr2.high)
-        vr_peaks.vr2.high = max;
+    if (min < vr2.peak.low)
+        vr2.peak.low = min;
+    if (max > vr2.peak.high)
+        vr2.peak.high = max;
+
+    if (!vr2.peak_valid)
+    {
+      vr2.peak_valid = \
+             vr2.peak.low <= vr2.threshold.low
+          && vr2.peak.high >= vr2.threshold.high;
+    }
   }
 
 }
@@ -484,10 +450,17 @@ CCM_FUNC static THD_FUNCTION(ThreadVR3, arg)
       if (val > max) max = val;
       if (val < min) min = val;
     }
-    if (min < vr_peaks.vr3.low)
-        vr_peaks.vr3.low = min;
-    if (max > vr_peaks.vr3.high)
-        vr_peaks.vr3.high = max;
+    if (min < vr3.peak.low)
+        vr3.peak.low = min;
+    if (max > vr3.peak.high)
+        vr3.peak.high = max;
+
+    if (!vr3.peak_valid)
+    {
+      vr3.peak_valid = \
+             vr3.peak.low <= vr3.threshold.low
+          && vr3.peak.high >= vr3.threshold.high;
+    }
   }
 
 }
@@ -504,9 +477,9 @@ void createVrThreads(void)
   compStart(&COMPD1, &comp1_conf);
   compStart(&COMPD2, &comp2_conf);
   compStart(&COMPD6, &comp6_conf);
-  pwmStart(&PWMD3, &pwm3cfg);
-  pwmStart(&PWMD4, &pwm4cfg);
-  pwmStart(&PWMD8, &pwm8cfg);
+  pwmStart(&PWMD3, &pwm_cfg);
+  pwmStart(&PWMD4, &pwm_cfg);
+  pwmStart(&PWMD8, &pwm_cfg);
 
   dacPutChannelX(&DACD1, 0, 2048); // This sets the biasing for our sensors and comparators.
   compEnable(&COMPD1);
