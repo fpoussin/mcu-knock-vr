@@ -12,11 +12,16 @@ typedef struct
 
 typedef struct
 {
+  bool time;
+  bool peak;
+} valid_t;
+
+typedef struct
+{
   high_low_t threshold;
   high_low_t peak;
   uint16_t min_time;
-  bool time_valid;
-  bool peak_valid;
+  valid_t valid;
 } vr_t;
 
 static vr_t vr1, vr2, vr3;
@@ -54,6 +59,12 @@ inline static void pwmSetChannel(PWMDriver *pwm, uint8_t channel, uint32_t value
   pwmEnable(pwm);
 }
 
+inline static void pwmSetReload(PWMDriver *pwm, uint32_t value)
+{
+  pwmDisable(pwm);
+  pwm->tim->ARR = value;
+  pwmEnable(pwm);
+}
 
 /*
  * CALLBACKS
@@ -70,42 +81,44 @@ static void pwm_ovfl_cb(PWMDriver *pwmp)
   {
     vr1.threshold.low = VR_DEFAULT_NEG_THRESHOLD;
     vr1.threshold.high = VR_DEFAULT_POS_THRESHOLD;
-    vr1.peak_valid = false;
-    vr1.time_valid = false;
+    vr1.valid.peak = false;
+    vr1.valid.time = false;
   }
   else if (pwmp == &PWMD4)
   {
     vr2.threshold.low = VR_DEFAULT_NEG_THRESHOLD;
     vr2.threshold.high = VR_DEFAULT_POS_THRESHOLD;
-    vr2.peak_valid = false;
-    vr2.time_valid = false;
+    vr2.valid.peak = false;
+    vr2.valid.time = false;
   }
   else if (pwmp == &PWMD8)
   {
     vr3.threshold.low = VR_DEFAULT_NEG_THRESHOLD;
     vr3.threshold.high = VR_DEFAULT_POS_THRESHOLD;
-    vr3.peak_valid = false;
-    vr3.time_valid = false;
+    vr3.valid.peak = false;
+    vr3.valid.time = false;
   }
+  pwmSetReload(pwmp, 0xFFFF); // Set to max
+  pwmSetChannel(pwmp, 0, 1); // Set to min
 }
 
 /*
  * VR validator timer
  * We are now far enough in the cycle to enable the output
  */
-static void pwm_oc_cb(PWMDriver *pwmp)
+static void pwm_oc1_cb(PWMDriver *pwmp)
 {
   if (pwmp == &PWMD3)
   {
-    vr1.time_valid = true;
+    vr1.valid.time = true;
   }
   else if (pwmp == &PWMD4)
   {
-    vr2.time_valid = true;
+    vr2.valid.time = true;
   }
   else if (pwmp == &PWMD8)
   {
-    vr3.time_valid = true;
+    vr3.valid.time = true;
   }
 }
 
@@ -117,44 +130,44 @@ static void comp_cb(COMPDriver *comp)
     /* Set new thresholds to 80% of previous peaks, reset validation */
     if (comp == &COMPD1)
     {
-      if (vr1.peak_valid && vr1.peak_valid)
+      if (vr1.valid.peak && vr1.valid.peak)
       {
         // Get last interval, set timeout;
         uint32_t cnt = pwmCounter(PWMD3);
-        pwmSetChannel(&PWMD3, 0, cnt * VR_DEFAULT_THRESHOLD_MULT);
+        pwmSetReload(&PWMD3, cnt * VR_DEFAULT_THRESHOLD_MULT);
 
         vr1.threshold.low = (uint16_t)((float)vr1.peak.low * 1.2f);
         vr1.threshold.high = (uint16_t)((float)vr1.peak.high * 0.8f);
-        vr1.peak_valid = false;
-        vr1.time_valid = false;
+        vr1.valid.peak = false;
+        vr1.valid.time = false;
       }
     }
     else if (comp == &COMPD2)
     {
-      if (vr2.peak_valid && vr2.peak_valid)
+      if (vr2.valid.peak && vr2.valid.peak)
       {
         // Get last interval, set timeout;
-          uint32_t cnt = pwmCounter(PWMD4);
-          pwmSetChannel(&PWMD4, 0, cnt * VR_DEFAULT_THRESHOLD_MULT);
+        uint32_t cnt = pwmCounter(PWMD4);
+        pwmSetReload(&PWMD4, cnt * VR_DEFAULT_THRESHOLD_MULT);
 
         vr2.threshold.low = (uint16_t)((float)vr2.peak.low * 1.2f);
         vr2.threshold.high = (uint16_t)((float)vr2.peak.high * 0.8f);
-        vr2.peak_valid = false;
-        vr2.time_valid = false;
+        vr2.valid.peak = false;
+        vr2.valid.time = false;
       }
     }
     else if (comp == &COMPD6)
     {
-      if (vr3.peak_valid && vr3.peak_valid)
+      if (vr3.valid.peak && vr3.valid.peak)
       {
         // Get last interval, set timeout;
-          uint32_t cnt = pwmCounter(PWMD8);
-          pwmSetChannel(&PWMD8, 0, cnt * VR_DEFAULT_THRESHOLD_MULT);
+        uint32_t cnt = pwmCounter(PWMD8);
+        pwmSetReload(&PWMD8, cnt * VR_DEFAULT_THRESHOLD_MULT);
 
         vr3.threshold.low = (uint16_t)((float)vr3.peak.low * 1.2f);
         vr3.threshold.high = (uint16_t)((float)vr3.peak.high * 0.8f);
-        vr3.peak_valid = false;
-        vr3.time_valid = false;
+        vr3.valid.peak = false;
+        vr3.valid.time = false;
       }
     }
 
@@ -198,7 +211,7 @@ static const PWMConfig pwm_cfg = {
   0xFFFF,                                   /* Initial PWM period maxed out.       */
   pwm_ovfl_cb,
   {
-   {PWM_OUTPUT_DISABLED, pwm_oc_cb},
+   {PWM_OUTPUT_DISABLED, pwm_oc1_cb},
    {PWM_OUTPUT_DISABLED, NULL},
    {PWM_OUTPUT_DISABLED, NULL},
    {PWM_OUTPUT_DISABLED, NULL}
@@ -343,6 +356,8 @@ CCM_FUNC static THD_FUNCTION(ThreadVR1, arg)
   size_t adc_data_size;
   median_t median;
 
+  PWMD3.tim->CR1 |= TIM_CR1_OPM; // One pulse
+
   median_init(&median, 0, vr1_pair, VR_SAMPLES);
 
   /* ADC 1 Ch3 Offset. -2048 */
@@ -366,9 +381,9 @@ CCM_FUNC static THD_FUNCTION(ThreadVR1, arg)
     if (max > vr1.peak.high)
         vr1.peak.high = max;
 
-    if (!vr1.peak_valid)
+    if (!vr1.valid.peak)
     {
-      vr1.peak_valid = \
+      vr1.valid.peak = \
              vr1.peak.low <= vr1.threshold.low
           && vr1.peak.high >= vr1.threshold.high;
     }
@@ -386,6 +401,8 @@ CCM_FUNC static THD_FUNCTION(ThreadVR2, arg)
   adcsample_t * adc_data_ptr;
   size_t adc_data_size;
   median_t median;
+
+  PWMD4.tim->CR1 |= TIM_CR1_OPM; // One pulse
 
   median_init(&median, 0, vr2_pair, VR_SAMPLES);
 
@@ -410,9 +427,9 @@ CCM_FUNC static THD_FUNCTION(ThreadVR2, arg)
     if (max > vr2.peak.high)
         vr2.peak.high = max;
 
-    if (!vr2.peak_valid)
+    if (!vr2.valid.peak)
     {
-      vr2.peak_valid = \
+      vr2.valid.peak = \
              vr2.peak.low <= vr2.threshold.low
           && vr2.peak.high >= vr2.threshold.high;
     }
@@ -431,6 +448,8 @@ CCM_FUNC static THD_FUNCTION(ThreadVR3, arg)
   adcsample_t * adc_data_ptr;
   size_t adc_data_size;
   median_t median;
+
+  PWMD8.tim->CR1 |= TIM_CR1_OPM; // One pulse
 
   median_init(&median, 0, vr3_pair, VR_SAMPLES);
 
@@ -455,9 +474,9 @@ CCM_FUNC static THD_FUNCTION(ThreadVR3, arg)
     if (max > vr3.peak.high)
         vr3.peak.high = max;
 
-    if (!vr3.peak_valid)
+    if (!vr3.valid.peak)
     {
-      vr3.peak_valid = \
+      vr3.valid.peak = \
              vr3.peak.low <= vr3.threshold.low
           && vr3.peak.high >= vr3.threshold.high;
     }
