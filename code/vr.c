@@ -6,6 +6,23 @@
 
 #define VALID_MSK 0x03
 
+#define TR1_EN palSetLineMode(LINE_TR1_OUT, 8)
+#define TR2_EN palSetLineMode(LINE_TR2_OUT, 8)
+#define TR3_EN palSetLineMode(LINE_TR3_OUT, 8)
+
+#define TR1_DIS palSetLineMode(LINE_TR1_OUT, 0)
+#define TR2_DIS palSetLineMode(LINE_TR2_OUT, 0)
+#define TR3_DIS palSetLineMode(LINE_TR3_OUT, 0)
+
+#define TR1_UP palSetLine(LINE_TR1_OUT)
+#define TR2_UP palSetLine(LINE_TR2_OUT)
+#define TR3_UP palSetLine(LINE_TR3_OUT)
+
+#define TR1_DN palClearLine(LINE_TR1_OUT)
+#define TR2_DN palClearLine(LINE_TR2_OUT)
+#define TR3_DN palClearLine(LINE_TR3_OUT)
+
+
 typedef struct
 {
   uint16_t high;
@@ -26,7 +43,7 @@ typedef struct
   uint16_t min_time;
   union {
     valid_t valid;
-    const uint8_t valid_msk;
+    uint8_t valid_msk;
   };
   uint8_t pad;
 } vr_t;
@@ -88,22 +105,19 @@ static void pwm_ovfl_cb(PWMDriver *pwmp)
   {
     vr1.threshold.low = VR_DEFAULT_NEG_THRESHOLD;
     vr1.threshold.high = VR_DEFAULT_POS_THRESHOLD;
-    vr1.valid.peak = false;
-    vr1.valid.time = false;
+    vr1.valid_msk = 0;
   }
   else if (pwmp == &PWMD4)
   {
     vr2.threshold.low = VR_DEFAULT_NEG_THRESHOLD;
     vr2.threshold.high = VR_DEFAULT_POS_THRESHOLD;
-    vr2.valid.peak = false;
-    vr2.valid.time = false;
+    vr2.valid_msk = 0;
   }
   else if (pwmp == &PWMD8)
   {
     vr3.threshold.low = VR_DEFAULT_NEG_THRESHOLD;
     vr3.threshold.high = VR_DEFAULT_POS_THRESHOLD;
-    vr3.valid.peak = false;
-    vr3.valid.time = false;
+    vr3.valid_msk = 0;
   }
   pwmSetReload(pwmp, 0xFFFF); // Set to max
   pwmSetChannel(pwmp, 0, 1); // Set to min
