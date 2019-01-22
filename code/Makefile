@@ -114,6 +114,7 @@ CSRC = $(ALLCSRC) \
        ipc.c \
        settings.c \
        usb_config.c \
+       timers.c \
        main.c
 
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global

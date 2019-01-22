@@ -3,6 +3,7 @@
 #include "ipc.h"
 #include "settings.h"
 #include "median.h"
+#include "timers.h"
 
 #define VALID_MSK 0x03
 
@@ -62,8 +63,7 @@ static vr_t vr1, vr2, vr3;
  * Support functions
  */
 
-#define pwmRestart(x) pwmEnable(x)
-#define pwmCounter(pwm) pwm.tim->CNT;
+#define pwmCounter(pwm) pwm.tim->CNT
 
 inline static void pwmDisable(PWMDriver *pwm)
 {
@@ -76,11 +76,16 @@ inline static void pwmEnable(PWMDriver *pwm)
   pwm->tim->CR1 |= TIM_CR1_CEN;
 }
 
-inline static void pwmSetChannel(PWMDriver *pwm, uint8_t channel, uint32_t value)
+inline static void pwmRestart(PWMDriver *pwm)
 {
   pwmDisable(pwm);
-  pwm->tim->CCR[channel] = value;
   pwmEnable(pwm);
+}
+
+inline static void pwmSetFrequency(PWMDriver *pwm, uint32_t freq)
+{
+  pwmDisable(pwm);
+  pwm->tim->PSC  = (pwm->clock / freq) - 1; // CLK is 36 (TIM3-4) or 72Mhz (TIM1/8)
 }
 
 inline static void pwmSetReload(PWMDriver *pwm, uint32_t value)
@@ -94,10 +99,26 @@ inline static void pwmSetReload(PWMDriver *pwm, uint32_t value)
  * CALLBACKS
  */
 
+void vr1IrqHandler(void)
+{
+
+}
+
+void vr2IrqHandler(void)
+{
+
+}
+
+void vr3IrqHandler(void)
+{
+
+}
+
 /*
  * Watchdog timeout callback
  * This happens when no output was generated before the timer completes
- * We reset the thresholds to default values
+ * We reset the thresholds to default values.
+ * Timer should have stopped since we are in one pulse mode.
  */
 static void pwm_ovfl_cb(PWMDriver *pwmp)
 {
@@ -119,8 +140,6 @@ static void pwm_ovfl_cb(PWMDriver *pwmp)
     vr3.threshold.high = VR_DEFAULT_POS_THRESHOLD;
     vr3.valid_msk = 0;
   }
-  pwmSetReload(pwmp, 0xFFFF); // Set to max
-  pwmSetChannel(pwmp, 0, 1); // Set to min
 }
 
 /*
@@ -155,12 +174,13 @@ static void comp_cb(COMPDriver *comp)
       {
         // Get last interval, set timeout;
         uint32_t cnt = pwmCounter(PWMD3);
-        pwmSetReload(&PWMD3, cnt * VR_DEFAULT_THRESHOLD_MULT);
+        pwmSetReload(&PWMD3, cnt * VR_DEFAULT_MULT_THRESHOLD);
 
         vr1.threshold.low = (uint16_t)((float)vr1.peak.low * 1.2f);
         vr1.threshold.high = (uint16_t)((float)vr1.peak.high * 0.8f);
-        vr1.valid.peak = false;
-        vr1.valid.time = false;
+        vr1.peak.low = VR_ZERO;
+        vr1.peak.high = VR_ZERO;
+        vr1.valid_msk = 0;
       }
     }
     else if (comp == &COMPD2)
@@ -169,12 +189,11 @@ static void comp_cb(COMPDriver *comp)
       {
         // Get last interval, set timeout;
         uint32_t cnt = pwmCounter(PWMD4);
-        pwmSetReload(&PWMD4, cnt * VR_DEFAULT_THRESHOLD_MULT);
+        pwmSetReload(&PWMD4, cnt * VR_DEFAULT_MULT_THRESHOLD);
 
         vr2.threshold.low = (uint16_t)((float)vr2.peak.low * 1.2f);
         vr2.threshold.high = (uint16_t)((float)vr2.peak.high * 0.8f);
-        vr2.valid.peak = false;
-        vr2.valid.time = false;
+        vr2.valid_msk = 0;
       }
     }
     else if (comp == &COMPD6)
@@ -183,12 +202,11 @@ static void comp_cb(COMPDriver *comp)
       {
         // Get last interval, set timeout;
         uint32_t cnt = pwmCounter(PWMD8);
-        pwmSetReload(&PWMD8, cnt * VR_DEFAULT_THRESHOLD_MULT);
+        pwmSetReload(&PWMD8, cnt * VR_DEFAULT_MULT_THRESHOLD);
 
         vr3.threshold.low = (uint16_t)((float)vr3.peak.low * 1.2f);
         vr3.threshold.high = (uint16_t)((float)vr3.peak.high * 0.8f);
-        vr3.valid.peak = false;
-        vr3.valid.time = false;
+        vr3.valid_msk = 0;
       }
     }
 
