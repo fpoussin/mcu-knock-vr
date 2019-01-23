@@ -104,21 +104,21 @@ inline static void timSetReload(TIM_TypeDef *tim, uint32_t value)
  * We reset the thresholds to default values.
  * Timer should have stopped since we are in one pulse mode.
  */
-void vr1OverflowHandler(void)
+void VR1_OVERFLOW_HANDLER(void)
 {
   vr1.threshold.low = VR_DEFAULT_NEG_THRESHOLD;
   vr1.threshold.high = VR_DEFAULT_POS_THRESHOLD;
   vr1.valid_msk = 0;
 }
 
-void vr2OverflowHandler(void)
+void VR2_OVERFLOW_HANDLER(void)
 {
   vr2.threshold.low = VR_DEFAULT_NEG_THRESHOLD;
   vr2.threshold.high = VR_DEFAULT_POS_THRESHOLD;
   vr2.valid_msk = 0;
 }
 
-void vr3OverflowHandler(void)
+void VR3_OVERFLOW_HANDLER(void)
 {
   vr3.threshold.low = VR_DEFAULT_NEG_THRESHOLD;
   vr3.threshold.high = VR_DEFAULT_POS_THRESHOLD;
@@ -130,17 +130,17 @@ void vr3OverflowHandler(void)
  * VR validator callbacks
  * We are now far enough in the cycle to enable the output
  */
-void vr1ValidateHandler(void)
+void VR1_COMPARE_HANDLER(void)
 {
   vr1.valid.time = true;
 }
 
-void vr2ValidateHandler(void)
+void VR2_COMPARE_HANDLER(void)
 {
   vr2.valid.time = true;
 }
 
-void vr3ValidateHandler(void)
+void VR3_COMPARE_HANDLER(void)
 {
   vr3.valid.time = true;
 }
@@ -507,6 +507,8 @@ void createVrThreads(void)
   opampEnable(&OPAMPD1);
   opampEnable(&OPAMPD2);
   opampEnable(&OPAMPD3);
+
+  setupTimers();
 
   chThdCreateStatic(waThreadVR1, sizeof(waThreadVR1), NORMALPRIO, ThreadVR1, NULL);
   chThdCreateStatic(waThreadVR2, sizeof(waThreadVR2), NORMALPRIO, ThreadVR2, NULL);
