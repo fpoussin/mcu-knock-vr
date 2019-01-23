@@ -20,9 +20,9 @@ mcuconf_community.h
 settings.c
 settings.h
 threads.h
-timers.c
-timers.h
 usb_config.c
 usb_config.h
 vr.c
 vr.h
+vrtimers.c
+vrtimers.h

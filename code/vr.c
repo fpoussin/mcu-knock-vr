@@ -3,7 +3,7 @@
 #include "ipc.h"
 #include "settings.h"
 #include "median.h"
-#include "timers.h"
+#include "vrtimers.h"
 
 #define VALID_MSK 0x03
 
@@ -53,115 +53,103 @@ static vr_t vr1, vr2, vr3;
 
 /*
  * Peripherals
- * VR1: ADC1 + COMP 1
- * VR2: ADC2 + COMP 2
- * VR3: ADC3 + COMP 6
- * DAC1 (bias)
+ * VR1: ADC1 + COMP 1 + TIM15
+ * VR2: ADC2 + COMP 2 + TIM16
+ * VR3: ADC3 + COMP 6 + TIM17
+ * All: DAC1 (bias)
  */
 
 /*
  * Support functions
  */
 
-#define pwmCounter(pwm) pwm.tim->CNT
+#define timCounter(tim) tim->CNT
 
-inline static void pwmDisable(PWMDriver *pwm)
+inline static void timDisable(TIM_TypeDef *tim)
 {
-  pwm->tim->CR1 &= ~TIM_CR1_CEN;
+  tim->CR1 &= ~TIM_CR1_CEN;
 }
 
-inline static void pwmEnable(PWMDriver *pwm)
+inline static void timEnable(TIM_TypeDef *tim)
 {
-  pwm->tim->CNT = 0;
-  pwm->tim->CR1 |= TIM_CR1_CEN;
+  tim->CNT = 0;
+  tim->CR1 |= TIM_CR1_CEN;
 }
 
-inline static void pwmRestart(PWMDriver *pwm)
+inline static void timRestart(TIM_TypeDef *tim)
 {
-  pwmDisable(pwm);
-  pwmEnable(pwm);
+  timDisable(tim);
+  timEnable(tim);
 }
 
-inline static void pwmSetFrequency(PWMDriver *pwm, uint32_t freq)
+inline static void timSetFrequency(TIM_TypeDef *tim, uint32_t freq)
 {
-  pwmDisable(pwm);
-  pwm->tim->PSC  = (pwm->clock / freq) - 1; // CLK is 36 (TIM3-4) or 72Mhz (TIM1/8)
+  timDisable(tim);
+  tim->PSC  = (STM32_TIMCLK2 / freq) - 1; // CLK is 36 (TIM3-4) or 72Mhz (TIM1/8)
 }
 
-inline static void pwmSetReload(PWMDriver *pwm, uint32_t value)
+inline static void timSetReload(TIM_TypeDef *tim, uint32_t value)
 {
-  pwmDisable(pwm);
-  pwm->tim->ARR = value;
-  pwmEnable(pwm);
+  tim->ARR = value;
 }
 
 /*
  * CALLBACKS
  */
 
-void vr1IrqHandler(void)
-{
-
-}
-
-void vr2IrqHandler(void)
-{
-
-}
-
-void vr3IrqHandler(void)
-{
-
-}
 
 /*
- * Watchdog timeout callback
+ * Watchdog timeout callbacks
  * This happens when no output was generated before the timer completes
  * We reset the thresholds to default values.
  * Timer should have stopped since we are in one pulse mode.
  */
-static void pwm_ovfl_cb(PWMDriver *pwmp)
+void VR1OverflowHandler(void)
 {
-  if (pwmp == &PWMD3)
-  {
-    vr1.threshold.low = VR_DEFAULT_NEG_THRESHOLD;
-    vr1.threshold.high = VR_DEFAULT_POS_THRESHOLD;
-    vr1.valid_msk = 0;
-  }
-  else if (pwmp == &PWMD4)
-  {
-    vr2.threshold.low = VR_DEFAULT_NEG_THRESHOLD;
-    vr2.threshold.high = VR_DEFAULT_POS_THRESHOLD;
-    vr2.valid_msk = 0;
-  }
-  else if (pwmp == &PWMD8)
-  {
-    vr3.threshold.low = VR_DEFAULT_NEG_THRESHOLD;
-    vr3.threshold.high = VR_DEFAULT_POS_THRESHOLD;
-    vr3.valid_msk = 0;
-  }
+  vr1.threshold.low = VR_DEFAULT_NEG_THRESHOLD;
+  vr1.threshold.high = VR_DEFAULT_POS_THRESHOLD;
+  vr1.valid_msk = 0;
 }
+
+void VR2OverflowHandler(void)
+{
+  vr2.threshold.low = VR_DEFAULT_NEG_THRESHOLD;
+  vr2.threshold.high = VR_DEFAULT_POS_THRESHOLD;
+  vr2.valid_msk = 0;
+}
+
+void VR3OverflowHandler(void)
+{
+  vr3.threshold.low = VR_DEFAULT_NEG_THRESHOLD;
+  vr3.threshold.high = VR_DEFAULT_POS_THRESHOLD;
+  vr3.valid_msk = 0;
+}
+
 
 /*
- * VR validator timer
+ * VR validator callbacks
  * We are now far enough in the cycle to enable the output
  */
-static void pwm_oc1_cb(PWMDriver *pwmp)
+void VR1ValidateHandler(void)
 {
-  if (pwmp == &PWMD3)
-  {
-    vr1.valid.time = true;
-  }
-  else if (pwmp == &PWMD4)
-  {
-    vr2.valid.time = true;
-  }
-  else if (pwmp == &PWMD8)
-  {
-    vr3.valid.time = true;
-  }
+  vr1.valid.time = true;
 }
 
+void VR2ValidateHandler(void)
+{
+  vr2.valid.time = true;
+}
+
+void VR3ValidateHandler(void)
+{
+  vr3.valid.time = true;
+}
+
+
+/*
+ * Comparator callback
+ * Happends when the COMP zero crosses
+ */
 static void comp_cb(COMPDriver *comp)
 {
   /* Check if output is high (rising) */
@@ -173,8 +161,8 @@ static void comp_cb(COMPDriver *comp)
       if (vr1.valid_msk & VALID_MSK)
       {
         // Get last interval, set timeout;
-        uint32_t cnt = pwmCounter(PWMD3);
-        pwmSetReload(&PWMD3, cnt * VR_DEFAULT_MULT_THRESHOLD);
+        uint32_t cnt = timCounter(VR1_TIM);
+        timSetReload(VR1_TIM, cnt * VR_DEFAULT_MULT_THRESHOLD);
 
         vr1.threshold.low = (uint16_t)((float)vr1.peak.low * 1.2f);
         vr1.threshold.high = (uint16_t)((float)vr1.peak.high * 0.8f);
@@ -188,8 +176,8 @@ static void comp_cb(COMPDriver *comp)
       if (vr2.valid_msk & VALID_MSK)
       {
         // Get last interval, set timeout;
-        uint32_t cnt = pwmCounter(PWMD4);
-        pwmSetReload(&PWMD4, cnt * VR_DEFAULT_MULT_THRESHOLD);
+        uint32_t cnt = timCounter(VR1_TIM);
+        timSetReload(VR1_TIM, cnt * VR_DEFAULT_MULT_THRESHOLD);
 
         vr2.threshold.low = (uint16_t)((float)vr2.peak.low * 1.2f);
         vr2.threshold.high = (uint16_t)((float)vr2.peak.high * 0.8f);
@@ -201,8 +189,8 @@ static void comp_cb(COMPDriver *comp)
       if (vr3.valid_msk & VALID_MSK)
       {
         // Get last interval, set timeout;
-        uint32_t cnt = pwmCounter(PWMD8);
-        pwmSetReload(&PWMD8, cnt * VR_DEFAULT_MULT_THRESHOLD);
+        uint32_t cnt = timCounter(VR1_TIM);
+        timSetReload(VR1_TIM, cnt * VR_DEFAULT_MULT_THRESHOLD);
 
         vr3.threshold.low = (uint16_t)((float)vr3.peak.low * 1.2f);
         vr3.threshold.high = (uint16_t)((float)vr3.peak.high * 0.8f);
@@ -240,24 +228,6 @@ static void adcCallback(ADCDriver *adcp, adcsample_t *buffer, size_t n)
 /*
  * Peripheral configs
  */
-
-/*
- * PWM3/4/8 configuration.
- * Watchdog (overflow) and validator (channel 1) for VR peaks
- */
-static const PWMConfig pwm_cfg = {
-  30000,                                    /* 30kHz PWM clock frequency.   */
-  0xFFFF,                                   /* Initial PWM period maxed out.       */
-  pwm_ovfl_cb,
-  {
-   {PWM_OUTPUT_DISABLED, pwm_oc1_cb},
-   {PWM_OUTPUT_DISABLED, NULL},
-   {PWM_OUTPUT_DISABLED, NULL},
-   {PWM_OUTPUT_DISABLED, NULL}
-  },
-  0,
-  0
-};
 
 static const DACConfig dac_conf = {
   .init         = 2047U,
@@ -395,8 +365,6 @@ CCM_FUNC static THD_FUNCTION(ThreadVR1, arg)
   size_t adc_data_size;
   median_t median;
 
-  PWMD3.tim->CR1 |= TIM_CR1_OPM; // One pulse
-
   median_init(&median, 0, vr1_pair, VR_SAMPLES);
 
   /* ADC 1 Ch3 Offset. -2048 */
@@ -440,8 +408,6 @@ CCM_FUNC static THD_FUNCTION(ThreadVR2, arg)
   adcsample_t * adc_data_ptr;
   size_t adc_data_size;
   median_t median;
-
-  PWMD4.tim->CR1 |= TIM_CR1_OPM; // One pulse
 
   median_init(&median, 0, vr2_pair, VR_SAMPLES);
 
@@ -488,8 +454,6 @@ CCM_FUNC static THD_FUNCTION(ThreadVR3, arg)
   size_t adc_data_size;
   median_t median;
 
-  PWMD8.tim->CR1 |= TIM_CR1_OPM; // One pulse
-
   median_init(&median, 0, vr3_pair, VR_SAMPLES);
 
   /* ADC 3 Ch3 Offset. -2048 */
@@ -535,9 +499,6 @@ void createVrThreads(void)
   compStart(&COMPD1, &comp1_conf);
   compStart(&COMPD2, &comp2_conf);
   compStart(&COMPD6, &comp6_conf);
-  pwmStart(&PWMD3, &pwm_cfg);
-  pwmStart(&PWMD4, &pwm_cfg);
-  pwmStart(&PWMD8, &pwm_cfg);
 
   dacPutChannelX(&DACD1, 0, 2048); // This sets the biasing for our sensors and comparators.
   compEnable(&COMPD1);
