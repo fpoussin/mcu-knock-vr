@@ -162,7 +162,10 @@ static void comp_cb(COMPDriver *comp)
       {
         // Get last interval, set timeout;
         uint32_t cnt = timCounter(VR1_TIM);
-        timSetReload(VR1_TIM, cnt * VR_DEFAULT_MULT_THRESHOLD);
+        uint32_t reload = cnt * VR_DEFAULT_MULT_THRESHOLD;
+        if (reload > 0xFFFF)
+            reload = 0xFFFF;
+        timSetReload(VR1_TIM, reload);
 
         vr1.threshold.low = (uint16_t)((float)vr1.peak.low * 1.2f);
         vr1.threshold.high = (uint16_t)((float)vr1.peak.high * 0.8f);
@@ -176,8 +179,12 @@ static void comp_cb(COMPDriver *comp)
       if (vr2.valid_msk & VALID_MSK)
       {
         // Get last interval, set timeout;
-        uint32_t cnt = timCounter(VR1_TIM);
-        timSetReload(VR1_TIM, cnt * VR_DEFAULT_MULT_THRESHOLD);
+        uint32_t cnt = timCounter(VR2_TIM);
+        uint32_t reload = cnt * VR_DEFAULT_MULT_THRESHOLD;
+        if (reload > 0xFFFF)
+            reload = 0xFFFF;
+        timSetReload(VR2_TIM, reload);
+
 
         vr2.threshold.low = (uint16_t)((float)vr2.peak.low * 1.2f);
         vr2.threshold.high = (uint16_t)((float)vr2.peak.high * 0.8f);
@@ -189,8 +196,12 @@ static void comp_cb(COMPDriver *comp)
       if (vr3.valid_msk & VALID_MSK)
       {
         // Get last interval, set timeout;
-        uint32_t cnt = timCounter(VR1_TIM);
-        timSetReload(VR1_TIM, cnt * VR_DEFAULT_MULT_THRESHOLD);
+        uint32_t cnt = timCounter(VR3_TIM);
+        uint32_t reload = cnt * VR_DEFAULT_MULT_THRESHOLD;
+        if (reload > 0xFFFF)
+            reload = 0xFFFF;
+        timSetReload(VR3_TIM, reload);
+
 
         vr3.threshold.low = (uint16_t)((float)vr3.peak.low * 1.2f);
         vr3.threshold.high = (uint16_t)((float)vr3.peak.high * 0.8f);
