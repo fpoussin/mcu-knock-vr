@@ -7,21 +7,21 @@
 
 #define VALID_MSK 0x03
 
-#define TR1_EN palSetLineMode(LINE_TR1_OUT, 8)
-#define TR2_EN palSetLineMode(LINE_TR2_OUT, 8)
-#define TR3_EN palSetLineMode(LINE_TR3_OUT, 8)
+#define tr1Enable() palSetLineMode(LINE_TR1_OUT, 8)
+#define tr2Enable() palSetLineMode(LINE_TR2_OUT, 8)
+#define tr3Enable() palSetLineMode(LINE_TR3_OUT, 8)
 
-#define TR1_DIS palSetLineMode(LINE_TR1_OUT, 0)
-#define TR2_DIS palSetLineMode(LINE_TR2_OUT, 0)
-#define TR3_DIS palSetLineMode(LINE_TR3_OUT, 0)
+#define tr1Disable() palSetLineMode(LINE_TR1_OUT, 0)
+#define tr2Disable() palSetLineMode(LINE_TR2_OUT, 0)
+#define tr3Disable() palSetLineMode(LINE_TR3_OUT, 0)
 
-#define TR1_UP palSetLine(LINE_TR1_OUT)
-#define TR2_UP palSetLine(LINE_TR2_OUT)
-#define TR3_UP palSetLine(LINE_TR3_OUT)
+#define tr1LineUp() palSetLine(LINE_TR1_OUT)
+#define tr2LineUp() palSetLine(LINE_TR2_OUT)
+#define tr3LineUp() palSetLine(LINE_TR3_OUT)
 
-#define TR1_DN palClearLine(LINE_TR1_OUT)
-#define TR2_DN palClearLine(LINE_TR2_OUT)
-#define TR3_DN palClearLine(LINE_TR3_OUT)
+#define tr1LineDown() palClearLine(LINE_TR1_OUT)
+#define tr2LineDown() palClearLine(LINE_TR2_OUT)
+#define tr3LineDown() palClearLine(LINE_TR3_OUT)
 
 
 typedef struct
@@ -104,21 +104,21 @@ inline static void timSetReload(TIM_TypeDef *tim, uint32_t value)
  * We reset the thresholds to default values.
  * Timer should have stopped since we are in one pulse mode.
  */
-void VR1OverflowHandler(void)
+void vr1OverflowHandler(void)
 {
   vr1.threshold.low = VR_DEFAULT_NEG_THRESHOLD;
   vr1.threshold.high = VR_DEFAULT_POS_THRESHOLD;
   vr1.valid_msk = 0;
 }
 
-void VR2OverflowHandler(void)
+void vr2OverflowHandler(void)
 {
   vr2.threshold.low = VR_DEFAULT_NEG_THRESHOLD;
   vr2.threshold.high = VR_DEFAULT_POS_THRESHOLD;
   vr2.valid_msk = 0;
 }
 
-void VR3OverflowHandler(void)
+void vr3OverflowHandler(void)
 {
   vr3.threshold.low = VR_DEFAULT_NEG_THRESHOLD;
   vr3.threshold.high = VR_DEFAULT_POS_THRESHOLD;
@@ -130,17 +130,17 @@ void VR3OverflowHandler(void)
  * VR validator callbacks
  * We are now far enough in the cycle to enable the output
  */
-void VR1ValidateHandler(void)
+void vr1ValidateHandler(void)
 {
   vr1.valid.time = true;
 }
 
-void VR2ValidateHandler(void)
+void vr2ValidateHandler(void)
 {
   vr2.valid.time = true;
 }
 
-void VR3ValidateHandler(void)
+void vr3ValidateHandler(void)
 {
   vr3.valid.time = true;
 }

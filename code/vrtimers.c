@@ -2,6 +2,15 @@
 
 static TIM_TypeDef * const timersp[3] = {VR1_TIM, VR2_TIM, VR3_TIM};
 
+extern void vr1OverflowHandler(void);
+extern void vr1ValidateHandler(void);
+
+extern void vr2OverflowHandler(void);
+extern void vr2ValidateHandler(void);
+
+extern void vr3OverflowHandler(void);
+extern void vr3ValidateHandler(void);
+
 OSAL_IRQ_HANDLER(VR1_TIM_HANDLER)
 {
   OSAL_IRQ_PROLOGUE();
@@ -10,9 +19,9 @@ OSAL_IRQ_HANDLER(VR1_TIM_HANDLER)
   sr &= VR1_TIM->DIER & STM32_TIM_DIER_IRQ_MASK;
   VR1_TIM->SR = ~sr;
   if ((sr & STM32_TIM_SR_CC1IF) != 0)
-    VR1OverflowHandler();
+    vr1OverflowHandler();
   if ((sr & STM32_TIM_SR_UIF) != 0)
-    VR1ValidateHandler();
+    vr1ValidateHandler();
 
   OSAL_IRQ_EPILOGUE();
 }
@@ -25,9 +34,9 @@ OSAL_IRQ_HANDLER(VR2_TIM_HANDLER)
   sr &= VR2_TIM->DIER & STM32_TIM_DIER_IRQ_MASK;
   VR2_TIM->SR = ~sr;
   if ((sr & STM32_TIM_SR_CC1IF) != 0)
-    VR2OverflowHandler();
+    vr2OverflowHandler();
   if ((sr & STM32_TIM_SR_UIF) != 0)
-    VR2ValidateHandler();
+    vr2ValidateHandler();
 
   OSAL_IRQ_EPILOGUE();
 }
@@ -40,9 +49,9 @@ OSAL_IRQ_HANDLER(VR3_TIM_HANDLER)
   sr &= VR3_TIM->DIER & STM32_TIM_DIER_IRQ_MASK;
   VR3_TIM->SR = ~sr;
   if ((sr & STM32_TIM_SR_CC1IF) != 0)
-    VR3OverflowHandler();
+    vr3OverflowHandler();
   if ((sr & STM32_TIM_SR_UIF) != 0)
-    VR3ValidateHandler();
+    vr3ValidateHandler();
 
   OSAL_IRQ_EPILOGUE();
 }
