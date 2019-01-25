@@ -42,8 +42,20 @@ static THD_FUNCTION(ThreadMonitor, arg)
   // TODO
   while (TRUE)
   {
-
     chThdSleepMilliseconds(1000);
+  }
+}
+
+static THD_WORKING_AREA(waThreadWdg, 64);
+static THD_FUNCTION(ThreadWdg, arg)
+{
+  (void)arg;
+  chRegSetThreadName("Watchdog");
+
+  while (true)
+  {
+    wdgResetI(&WDGD1);
+    chThdSleepMilliseconds(200);
   }
 }
 
@@ -59,14 +71,14 @@ int main(void) {
   createKnockThread();
   createVrThreads();
 
-  chThdCreateStatic(waThreadMonitor, sizeof(waThreadMonitor), NORMALPRIO+10, ThreadMonitor, NULL);
+  chThdCreateStatic(waThreadMonitor, sizeof(waThreadMonitor), NORMALPRIO + 10, ThreadMonitor, NULL);
+  chThdCreateStatic(waThreadWdg, sizeof(waThreadWdg), HIGHPRIO, ThreadWdg, NULL);
 
   /*
    * Normal main() thread activity.
    */
-  while (true) {
-    wdgReset(&WDGD1);
+  while (true)
+  {
     chThdSleepMilliseconds(100);
   }
-  return 0;
 }
