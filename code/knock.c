@@ -33,7 +33,7 @@ static const DACConfig dac_conf = {
   .cr           = 0
 };
 
-static const OPAMPConfig opamp4_conf = {
+static const OPAMPConfig opamp_conf = {
   STM32_OPAMP_NonInvertingInput_IO4 | // INP connectd to PB13
   STM32_OPAMP_InvertingInput_Vout // INM connected to vout (follower)
 };
@@ -107,7 +107,7 @@ CCM_FUNC THD_FUNCTION(ThreadKnock, arg)
   uint16_t i;
 
   /* ADC 4 Ch3 Offset. -2048 */
-  ADC4->OFR1 = ADC_OFR1_OFFSET1_EN | (ADC_OFR1_OFFSET1_CH_0 | ADC_OFR1_OFFSET1_CH_1) | (2048 & 0xFFF);
+  KNOCK_ADC->OFR1 = ADC_OFR1_OFFSET1_EN | (ADC_OFR1_OFFSET1_CH_0 | ADC_OFR1_OFFSET1_CH_1) | (2048 & 0xFFF);
 
   adcStartConversion(&ADCD3, &adcgrpcfg_knock, knock_samples, FFT_SAMPLES);
 
@@ -180,7 +180,7 @@ CCM_FUNC THD_FUNCTION(ThreadKnockIntegrator, arg)
       knock_int /= 2;
       int_cnt++;
 
-      dacPutChannelX(&DACD2, 0, knock_int); // This sets the knock output DAC to our value.
+      dacPutChannelX(&KNOCK_DACD, 0, knock_int); // This sets the knock output DAC to our value.
     }
   }
 }
@@ -201,11 +201,11 @@ static void sample_cb(void *arg)
 
 void createKnockThread(void)
 {
-  opampStart(&OPAMPD4, &opamp4_conf);
-  adcStart(&ADCD4, NULL);
+  opampStart(&KNOCK_OPAMPD, &opamp_conf);
+  adcStart(&KNOCK_ADCD, NULL);
 
-  dacStart(&DACD2, &dac_conf);
-  dacPutChannelX(&DACD2, 0, 0); // This sets knock output to 0;
+  dacStart(&KNOCK_DACD, &dac_conf);
+  dacPutChannelX(&KNOCK_DACD, 0, 0); // This sets knock output to 0;
 
   /* Events initialization. */
   chEvtObjectInit(&evt_knock_result_rdy);

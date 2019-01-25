@@ -1,5 +1,13 @@
 #include "ch.h"
 
+#define KNOCK_ADC ADC2
+#define KNOCK_ADCD ADCD2
+#define KNOCK_OPAMP OPAMP2
+#define KNOCK_OPAMPD OPAMPD2
+
+#define KNOCK_DAC DAC2
+#define KNOCK_DACD DACD2
+
 #define FFT_SIZE 512
 #define FFT_SAMPLES (FFT_SIZE*2)
 #define FFT_FREQ (117263/2)

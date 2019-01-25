@@ -156,7 +156,7 @@ static void comp_cb(COMPDriver *comp)
   if (comp->reg->CSR & COMP_CSR_COMPxOUT)
   {
     /* Set new thresholds to 80% of previous peaks, reset validation */
-    if (comp == &COMPD1)
+    if (comp == &VR1_COMPD)
     {
       if (vr1.valid_msk & VALID_MSK)
       {
@@ -174,7 +174,7 @@ static void comp_cb(COMPDriver *comp)
         vr1.valid_msk = 0;
       }
     }
-    else if (comp == &COMPD2)
+    else if (comp == &VR2_COMPD)
     {
       if (vr2.valid_msk & VALID_MSK)
       {
@@ -191,7 +191,7 @@ static void comp_cb(COMPDriver *comp)
         vr2.valid_msk = 0;
       }
     }
-    else if (comp == &COMPD6)
+    else if (comp == &VR3_COMPD)
     {
       if (vr3.valid_msk & VALID_MSK)
       {
@@ -220,17 +220,17 @@ static void adcCallback(ADCDriver *adcp, adcsample_t *buffer, size_t n)
 {
   // Check for min/max in the ADC thread
   chSysLockFromISR();
-  if (adcp == &ADCD1)
+  if (adcp == &VR1_ADCD)
   {
     allocSendSamplesI(&vr1_mb, (void*)buffer, n);
   }
-  else if (adcp == &ADCD2)
+  else if (adcp == &VR2_ADCD)
   {
     allocSendSamplesI(&vr2_mb, (void*)buffer, n);
   }
-  else if (adcp == &ADCD3)
+  else if (adcp == &VR3_ADCD)
   {
-    allocSendSamplesI(&vr2_mb, (void*)buffer, n);
+    allocSendSamplesI(&vr3_mb, (void*)buffer, n);
   }
   chSysUnlockFromISR();
 }
@@ -322,7 +322,7 @@ static const ADCConversionGroup vr1grpcfg = {
   }
 };
 
-/* ADC2 Clk is 72Mhz/1 72Mhz  */
+/* ADC3 Clk is 72Mhz/1 72Mhz  */
 static const ADCConversionGroup vr2grpcfg = {
   TRUE,
   1,
@@ -343,7 +343,7 @@ static const ADCConversionGroup vr2grpcfg = {
 };
 
 
-/* ADC3 Clk is 72Mhz/1 72Mhz  */
+/* ADC4 Clk is 72Mhz/1 72Mhz  */
 static const ADCConversionGroup vr3grpcfg = {
   TRUE,
   1,
@@ -378,8 +378,8 @@ CCM_FUNC static THD_FUNCTION(ThreadVR1, arg)
   median_init(&median, 0, vr1_pair, VR_SAMPLES);
 
   /* ADC 1 Ch3 Offset. -2048 */
-  ADC1->OFR1 = ADC_OFR1_OFFSET1_EN | ADC_OFR1_OFFSET1_CH_0 | ADC_OFR1_OFFSET1_CH_1 | (2048 & 0xFFF);
-  adcStartConversion(&ADCD1, &vr1grpcfg, vr1_samples, VR_SAMPLES);
+  VR1_ADC->OFR1 = ADC_OFR1_OFFSET1_EN | ADC_OFR1_OFFSET1_CH_0 | ADC_OFR1_OFFSET1_CH_1 | (2048 & 0xFFF);
+  adcStartConversion(&VR1_ADCD, &vr1grpcfg, vr1_samples, VR_SAMPLES);
 
   while (TRUE)
   {
@@ -422,8 +422,8 @@ CCM_FUNC static THD_FUNCTION(ThreadVR2, arg)
   median_init(&median, 0, vr2_pair, VR_SAMPLES);
 
   /* ADC 2 Ch1 Offset. -2048 */
-  ADC2->OFR1 = ADC_OFR1_OFFSET1_EN | ADC_OFR1_OFFSET1_CH_0 | (2048 & 0xFFF);
-  adcStartConversion(&ADCD2, &vr2grpcfg, vr2_samples, VR_SAMPLES);
+  VR2_ADC->OFR1 = ADC_OFR1_OFFSET1_EN | ADC_OFR1_OFFSET1_CH_0 | (2048 & 0xFFF);
+  adcStartConversion(&VR2_ADCD, &vr2grpcfg, vr2_samples, VR_SAMPLES);
 
   while (TRUE)
   {
@@ -467,8 +467,8 @@ CCM_FUNC static THD_FUNCTION(ThreadVR3, arg)
   median_init(&median, 0, vr3_pair, VR_SAMPLES);
 
   /* ADC 3 Ch3 Offset. -2048 */
-  ADC1->OFR1 = ADC_OFR1_OFFSET1_EN | ADC_OFR1_OFFSET1_CH_0 | ADC_OFR1_OFFSET1_CH_1 | (2048 & 0xFFF);
-  adcStartConversion(&ADCD1, &vr3grpcfg, vr3_samples, VR_SAMPLES);
+  VR3_ADC->OFR1 = ADC_OFR1_OFFSET1_EN | ADC_OFR1_OFFSET1_CH_0 | ADC_OFR1_OFFSET1_CH_1 | (2048 & 0xFFF);
+  adcStartConversion(&VR3_ADCD, &vr3grpcfg, vr3_samples, VR_SAMPLES);
 
   while (TRUE)
   {
@@ -499,24 +499,24 @@ CCM_FUNC static THD_FUNCTION(ThreadVR3, arg)
 
 void createVrThreads(void)
 {
-  opampStart(&OPAMPD1, &opamp1_conf);
-  opampStart(&OPAMPD2, &opamp2_conf);
-  opampStart(&OPAMPD3, &opamp3_conf);
-  adcStart(&ADCD1, NULL);
-  adcStart(&ADCD2, NULL);
-  adcStart(&ADCD3, NULL);
-  dacStart(&DACD1, &dac_conf);
-  compStart(&COMPD1, &comp1_conf);
-  compStart(&COMPD2, &comp2_conf);
-  compStart(&COMPD6, &comp6_conf);
+  opampStart(&VR1_OPAMPD, &opamp1_conf);
+  opampStart(&VR2_OPAMPD, &opamp2_conf);
+  opampStart(&VR3_OPAMPD, &opamp3_conf);
+  adcStart(&VR1_ADCD, NULL);
+  adcStart(&VR2_ADCD, NULL);
+  adcStart(&VR3_ADCD, NULL);
+  dacStart(&VR_DACD, &dac_conf);
+  compStart(&VR1_COMPD, &comp1_conf);
+  compStart(&VR2_COMPD, &comp2_conf);
+  compStart(&VR3_COMPD, &comp6_conf);
 
-  dacPutChannelX(&DACD1, 0, 2048); // This sets the biasing for our sensors and comparators.
-  compEnable(&COMPD1);
-  compEnable(&COMPD2);
-  compEnable(&COMPD6);
-  opampEnable(&OPAMPD1);
-  opampEnable(&OPAMPD2);
-  opampEnable(&OPAMPD3);
+  dacPutChannelX(&VR_DACD, 0, 2048); // This sets the biasing for our sensors and comparators.
+  compEnable(&VR1_COMPD);
+  compEnable(&VR2_COMPD);
+  compEnable(&VR3_COMPD);
+  opampEnable(&VR1_OPAMPD);
+  opampEnable(&VR2_OPAMPD);
+  opampEnable(&VR3_OPAMPD);
 
   setupTimers();
 
