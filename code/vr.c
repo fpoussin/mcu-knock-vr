@@ -202,7 +202,6 @@ static void comp_cb(COMPDriver *comp)
             reload = 0xFFFF;
         timSetReload(VR3_TIM, reload);
 
-
         vr3.threshold.low = (uint16_t)((float)vr3.peak.low * 1.2f);
         vr3.threshold.high = (uint16_t)((float)vr3.peak.high * 0.8f);
         vr3.valid_msk = 0;

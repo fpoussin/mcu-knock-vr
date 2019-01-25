@@ -70,6 +70,7 @@ int main(void) {
   wdgStart(&WDGD1, &wdgcfg);
   createKnockThread();
   createVrThreads();
+  createSpiThreads();
 
   chThdCreateStatic(waThreadMonitor, sizeof(waThreadMonitor), NORMALPRIO + 10, ThreadMonitor, NULL);
   chThdCreateStatic(waThreadWdg, sizeof(waThreadWdg), HIGHPRIO, ThreadWdg, NULL);

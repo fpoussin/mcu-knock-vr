@@ -115,6 +115,7 @@ CSRC = $(ALLCSRC) \
        settings.c \
        usb_config.c \
        vrtimers.c \
+       spi_slave.c \
        main.c
 
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global

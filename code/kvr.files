@@ -19,6 +19,8 @@ mcuconf.h
 mcuconf_community.h
 settings.c
 settings.h
+spi_slave.c
+spi_slave.h
 threads.h
 usb_config.c
 usb_config.h

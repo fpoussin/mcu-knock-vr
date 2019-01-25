@@ -8,3 +8,4 @@
 
 void createKnockThread(void);
 void createVrThreads(void);
+void createSpiThreads(void);
