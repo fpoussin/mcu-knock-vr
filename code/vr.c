@@ -65,38 +65,44 @@ static vr_t vr1, vr2, vr3;
 
 #define timCounter(tim) tim->CNT
 
-inline static void timDisable(TIM_TypeDef *tim)
+CCM_FUNC inline static void timDisable(TIM_TypeDef *tim)
 {
   tim->CR1 &= ~TIM_CR1_CEN;
 }
 
-inline static void timEnable(TIM_TypeDef *tim)
+CCM_FUNC inline static void timEnable(TIM_TypeDef *tim)
 {
   tim->CNT = 0;
   tim->CR1 |= TIM_CR1_CEN;
 }
 
-inline static void timRestart(TIM_TypeDef *tim)
+CCM_FUNC inline static void timRestart(TIM_TypeDef *tim)
 {
   timDisable(tim);
   timEnable(tim);
 }
 
-inline static void timSetFrequency(TIM_TypeDef *tim, uint32_t freq)
+CCM_FUNC inline static void timSetFrequency(TIM_TypeDef *tim, uint32_t freq)
 {
   timDisable(tim);
   tim->PSC  = (STM32_TIMCLK2 / freq) - 1; // CLK is 36 (TIM3-4) or 72Mhz (TIM1/8)
 }
 
-inline static void timSetReload(TIM_TypeDef *tim, uint32_t value)
+CCM_FUNC inline static void timSetReload(TIM_TypeDef *tim, uint32_t value)
 {
   tim->ARR = value;
 }
 
 /*
- * CALLBACKS
+ * CALLBACKS and their support functions
  */
 
+inline static void OverflowReset(vr_t *vr)
+{
+  vr->threshold.low = VR_DEFAULT_NEG_THRESHOLD;
+  vr->threshold.high = VR_DEFAULT_POS_THRESHOLD;
+  vr->valid_msk = 0;
+}
 
 /*
  * Watchdog timeout callbacks
@@ -104,25 +110,19 @@ inline static void timSetReload(TIM_TypeDef *tim, uint32_t value)
  * We reset the thresholds to default values.
  * Timer should have stopped since we are in one pulse mode.
  */
-void VR1_OVERFLOW_HANDLER(void)
+CCM_FUNC void VR1_OVERFLOW_HANDLER(void)
 {
-  vr1.threshold.low = VR_DEFAULT_NEG_THRESHOLD;
-  vr1.threshold.high = VR_DEFAULT_POS_THRESHOLD;
-  vr1.valid_msk = 0;
+  OverflowReset(&vr1);
 }
 
-void VR2_OVERFLOW_HANDLER(void)
+CCM_FUNC void VR2_OVERFLOW_HANDLER(void)
 {
-  vr2.threshold.low = VR_DEFAULT_NEG_THRESHOLD;
-  vr2.threshold.high = VR_DEFAULT_POS_THRESHOLD;
-  vr2.valid_msk = 0;
+  OverflowReset(&vr2);
 }
 
-void VR3_OVERFLOW_HANDLER(void)
+CCM_FUNC void VR3_OVERFLOW_HANDLER(void)
 {
-  vr3.threshold.low = VR_DEFAULT_NEG_THRESHOLD;
-  vr3.threshold.high = VR_DEFAULT_POS_THRESHOLD;
-  vr3.valid_msk = 0;
+  OverflowReset(&vr3);
 }
 
 
@@ -130,19 +130,40 @@ void VR3_OVERFLOW_HANDLER(void)
  * VR validator callbacks
  * We are now far enough in the cycle to enable the output
  */
-void VR1_COMPARE_HANDLER(void)
+CCM_FUNC void VR1_COMPARE_HANDLER(void)
 {
   vr1.valid.time = true;
 }
 
-void VR2_COMPARE_HANDLER(void)
+CCM_FUNC void VR2_COMPARE_HANDLER(void)
 {
   vr2.valid.time = true;
 }
 
-void VR3_COMPARE_HANDLER(void)
+CCM_FUNC void VR3_COMPARE_HANDLER(void)
 {
   vr3.valid.time = true;
+}
+
+
+/* Set new thresholds to 80% of previous peaks, reset validation */
+CCM_FUNC static inline void ComparatorThresholdHandler(vr_t *vr, TIM_TypeDef *tim)
+{
+  if (vr->valid_msk & VALID_MSK)
+  {
+    // Get last interval, set timeout;
+    uint32_t cnt = timCounter(tim);
+    uint32_t reload = cnt * VR_DEFAULT_MULT_THRESHOLD;
+    if (reload > 0xFFFF)
+        reload = 0xFFFF;
+    timSetReload(tim, reload);
+
+    vr->threshold.low = (uint16_t)((float)vr->peak.low * 1.2f);
+    vr->threshold.high = (uint16_t)((float)vr->peak.high * 0.8f);
+    vr->peak.low = VR_ZERO;
+    vr->peak.high = VR_ZERO;
+    vr->valid_msk = 0;
+  }
 }
 
 
@@ -150,64 +171,23 @@ void VR3_COMPARE_HANDLER(void)
  * Comparator callback
  * Happends when the COMP zero crosses
  */
-static void comp_cb(COMPDriver *comp)
+CCM_FUNC static void comp_cb(COMPDriver *comp)
 {
   /* Check if output is high (rising) */
   if (comp->reg->CSR & COMP_CSR_COMPxOUT)
   {
-    /* Set new thresholds to 80% of previous peaks, reset validation */
     if (comp == &VR1_COMPD)
     {
-      if (vr1.valid_msk & VALID_MSK)
-      {
-        // Get last interval, set timeout;
-        uint32_t cnt = timCounter(VR1_TIM);
-        uint32_t reload = cnt * VR_DEFAULT_MULT_THRESHOLD;
-        if (reload > 0xFFFF)
-            reload = 0xFFFF;
-        timSetReload(VR1_TIM, reload);
-
-        vr1.threshold.low = (uint16_t)((float)vr1.peak.low * 1.2f);
-        vr1.threshold.high = (uint16_t)((float)vr1.peak.high * 0.8f);
-        vr1.peak.low = VR_ZERO;
-        vr1.peak.high = VR_ZERO;
-        vr1.valid_msk = 0;
-      }
+      ComparatorThresholdHandler(&vr1, VR1_TIM);
     }
     else if (comp == &VR2_COMPD)
     {
-      if (vr2.valid_msk & VALID_MSK)
-      {
-        // Get last interval, set timeout;
-        uint32_t cnt = timCounter(VR2_TIM);
-        uint32_t reload = cnt * VR_DEFAULT_MULT_THRESHOLD;
-        if (reload > 0xFFFF)
-            reload = 0xFFFF;
-        timSetReload(VR2_TIM, reload);
-
-
-        vr2.threshold.low = (uint16_t)((float)vr2.peak.low * 1.2f);
-        vr2.threshold.high = (uint16_t)((float)vr2.peak.high * 0.8f);
-        vr2.valid_msk = 0;
-      }
+      ComparatorThresholdHandler(&vr2, VR2_TIM);
     }
     else if (comp == &VR3_COMPD)
     {
-      if (vr3.valid_msk & VALID_MSK)
-      {
-        // Get last interval, set timeout;
-        uint32_t cnt = timCounter(VR3_TIM);
-        uint32_t reload = cnt * VR_DEFAULT_MULT_THRESHOLD;
-        if (reload > 0xFFFF)
-            reload = 0xFFFF;
-        timSetReload(VR3_TIM, reload);
-
-        vr3.threshold.low = (uint16_t)((float)vr3.peak.low * 1.2f);
-        vr3.threshold.high = (uint16_t)((float)vr3.peak.high * 0.8f);
-        vr3.valid_msk = 0;
-      }
+      ComparatorThresholdHandler(&vr3, VR3_TIM);
     }
-
   }
   else // LOW
   {
@@ -363,6 +343,24 @@ static const ADCConversionGroup vr3grpcfg = {
   }
 };
 
+CCM_FUNC static bool checkPeak(vr_t* vr, median_t* median, adcsample_t* samples, size_t size)
+{
+  /* Filtering and finding min/max */
+  uint16_t val, min, max = 0;
+  for (uint16_t i = 0; i < size; i++)
+  {
+    val = median_filter(median, samples[i]);
+    if (val > max) max = val;
+    if (val < min) min = val;
+  }
+  if (min < vr->peak.low)
+      vr->peak.low = min;
+  if (max > vr->peak.high)
+      vr->peak.high = max;
+
+  return vr->peak.low <= vr->threshold.low && vr->peak.high >= vr->threshold.high;
+}
+
 static pair_t vr1_pair[VR_SAMPLES];
 static adcsample_t vr1_samples[VR_SAMPLES];
 static THD_WORKING_AREA(waThreadVR1, 128);
@@ -385,24 +383,11 @@ CCM_FUNC static THD_FUNCTION(ThreadVR1, arg)
   {
     recvFreeSamples(&vr1_mb, (void*)&adc_data_ptr, &adc_data_size, TIME_INFINITE);
 
-    /* Filtering and finding min/max */
-    uint16_t val, min, max = 0;
-    for (uint16_t i = 0; i < VR_SAMPLES; i++)
-    {
-      val = median_filter(&median, adc_data_ptr[i]);
-      if (val > max) max = val;
-      if (val < min) min = val;
-    }
-    if (min < vr1.peak.low)
-        vr1.peak.low = min;
-    if (max > vr1.peak.high)
-        vr1.peak.high = max;
+    bool res = checkPeak(&vr1, &median, adc_data_ptr, adc_data_size);
 
     if (!vr1.valid.peak)
     {
-      vr1.valid.peak = \
-             vr1.peak.low <= vr1.threshold.low
-          && vr1.peak.high >= vr1.threshold.high;
+      vr1.valid.peak = res;
     }
   }
 }
@@ -429,27 +414,13 @@ CCM_FUNC static THD_FUNCTION(ThreadVR2, arg)
   {
     recvFreeSamples(&vr2_mb, (void*)&adc_data_ptr, &adc_data_size, TIME_INFINITE);
 
-    /* Filtering and finding min/max */
-    uint16_t val, min, max = 0;
-    for (uint16_t i = 0; i < VR_SAMPLES; i++)
-    {
-      val = median_filter(&median, adc_data_ptr[i]);
-      if (val > max) max = val;
-      if (val < min) min = val;
-    }
-    if (min < vr2.peak.low)
-        vr2.peak.low = min;
-    if (max > vr2.peak.high)
-        vr2.peak.high = max;
+    bool res = checkPeak(&vr2, &median, adc_data_ptr, adc_data_size);
 
     if (!vr2.valid.peak)
     {
-      vr2.valid.peak = \
-             vr2.peak.low <= vr2.threshold.low
-          && vr2.peak.high >= vr2.threshold.high;
+      vr2.valid.peak = res;
     }
   }
-
 }
 
 static pair_t vr3_pair[VR_SAMPLES];
@@ -474,27 +445,13 @@ CCM_FUNC static THD_FUNCTION(ThreadVR3, arg)
   {
     recvFreeSamples(&vr3_mb, (void*)&adc_data_ptr, &adc_data_size, TIME_INFINITE);
 
-    /* Filtering and finding min/max */
-    uint16_t val, min, max = 0;
-    for (uint16_t i = 0; i < VR_SAMPLES; i++)
-    {
-      val = median_filter(&median, adc_data_ptr[i]);
-      if (val > max) max = val;
-      if (val < min) min = val;
-    }
-    if (min < vr3.peak.low)
-        vr3.peak.low = min;
-    if (max > vr3.peak.high)
-        vr3.peak.high = max;
+    bool res = checkPeak(&vr3, &median, adc_data_ptr, adc_data_size);
 
     if (!vr3.valid.peak)
     {
-      vr3.valid.peak = \
-             vr3.peak.low <= vr3.threshold.low
-          && vr3.peak.high >= vr3.threshold.high;
+      vr3.valid.peak = res;
     }
   }
-
 }
 
 void createVrThreads(void)
