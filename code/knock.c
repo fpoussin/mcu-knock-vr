@@ -101,9 +101,6 @@ CCM_FUNC THD_FUNCTION(ThreadKnock, arg)
 
   q15_t* knock_data_ptr;
   size_t knock_data_sz;
-
-  float32_t max_value = 0;
-  uint32_t max_index = 0;
   uint16_t i;
 
   /* ADC 4 Ch3 Offset. -2048 */
@@ -120,7 +117,7 @@ CCM_FUNC THD_FUNCTION(ThreadKnock, arg)
     recvFreeSamples(&knock_mb, (void*)&knock_data_ptr, &knock_data_sz, TIME_INFINITE);
 
     /* Copy and convert ADC samples */
-    for (i = 0; i < FFT_SIZE * 2; i += 4)
+    for (i = 0; i < FFT_SAMPLES; i += 4)
     {
       /* Hann Window */
       const float32_t multiplier = (1.0f - arm_cos_f32((2.0f * PI * (float32_t)i) / (((float32_t)FFT_SIZE * 2.0f) - 1.0f)));
@@ -136,7 +133,6 @@ CCM_FUNC THD_FUNCTION(ThreadKnock, arg)
     /* Process the data through the Complex Magnitude Module for
     calculating the magnitude at each bin */
     arm_cmplx_mag_f32(output, mag_knock, SPECTRUM_SIZE); // Calculate magnitude, outputs q2.14
-    arm_max_f32(mag_knock, SPECTRUM_SIZE, &max_value, &max_index); // Find max magnitude
 
     // Convert 2.14 to 16 Bits unsigned
     for (i=0; i < SPECTRUM_SIZE; i++)
@@ -159,11 +155,14 @@ CCM_FUNC THD_FUNCTION(ThreadKnock, arg)
   return;
 }
 
-static THD_WORKING_AREA(waThreadKnockIntegrator, 128);
-CCM_FUNC THD_FUNCTION(ThreadKnockIntegrator, arg)
+/*
+ * We just keep the peak value and output it
+ */
+static THD_WORKING_AREA(waThreadKnockOuput, 128);
+CCM_FUNC THD_FUNCTION(ThreadKnockOuput, arg)
 {
   (void)arg;
-  (void)waThreadKnockIntegrator;
+  (void)waThreadKnockOuput;
   chRegSetThreadName("Knock Integrator");
 
   /* Events registration.*/
@@ -172,15 +171,14 @@ CCM_FUNC THD_FUNCTION(ThreadKnockIntegrator, arg)
 
   while (TRUE)
   {
-    uint16_t knock_int = 0, int_cnt = 0;
+    uint16_t knock_out = 0;
     while (chEvtWaitOne(EVENT_MASK(0)) == 1 && sampling_enabled)
     {
-      // TODO: real integrator
-      knock_int += (knock_value >> 4);
-      knock_int /= 2;
-      int_cnt++;
-
-      dacPutChannelX(&KNOCK_DACD, 0, knock_int); // This sets the knock output DAC to our value.
+      if (knock_value > knock_out)
+      {
+        knock_out = knock_value;
+      }
+      dacPutChannelX(&KNOCK_DACD, 0, knock_out >> 4); // This sets the knock output DAC to our value.
     }
   }
 }
@@ -211,7 +209,7 @@ void createKnockThread(void)
   chEvtObjectInit(&evt_knock_result_rdy);
 
   chThdCreateStatic(waThreadKnock, sizeof(waThreadKnock), NORMALPRIO, ThreadKnock, NULL);
-  chThdCreateStatic(waThreadKnockIntegrator, sizeof(waThreadKnockIntegrator), NORMALPRIO, ThreadKnockIntegrator, NULL);
+  chThdCreateStatic(waThreadKnockOuput, sizeof(waThreadKnockOuput), NORMALPRIO, ThreadKnockOuput, NULL);
 
   palEnableLineEvent(LINE_SAMPLE, PAL_EVENT_MODE_BOTH_EDGES);
   palSetLineCallback(LINE_SAMPLE, sample_cb, NULL);

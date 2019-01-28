@@ -147,7 +147,7 @@ CCM_FUNC void VR3_COMPARE_HANDLER(void)
 
 
 /* Set new thresholds to 80% of previous peaks, reset validation */
-CCM_FUNC static inline void ComparatorThresholdHandler(vr_t *vr, TIM_TypeDef *tim)
+CCM_FUNC static void ComparatorThresholdHandler(vr_t *vr, TIM_TypeDef *tim)
 {
   if (vr->valid_msk & VALID_MSK)
   {
@@ -343,7 +343,7 @@ static const ADCConversionGroup vr3grpcfg = {
   }
 };
 
-CCM_FUNC static bool checkPeak(vr_t* vr, median_t* median, adcsample_t* samples, size_t size)
+CCM_FUNC static bool checkPeak(vr_t* vr, median_t* median, const adcsample_t* samples, size_t size)
 {
   /* Filtering and finding min/max */
   uint16_t val, min, max = 0;
