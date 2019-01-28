@@ -176,8 +176,7 @@ SECTIONS
         *(.text.Vector*)
         /* *chcore*.o */
         /* *(.text._port*) */
-        *(.text.arm_*fft*)
-        *(.text.arm_cmplx*)
+        *(.text.arm_*)
         *(.text.median_filter)
         *(.text.middle_of_3)
         . = ALIGN(4);

@@ -3,6 +3,7 @@
 #include "arm_math.h"
 #include "ipc.h"
 #include "settings.h"
+#include "median.h"
 
 /*
  * Knock peripherals:
@@ -17,7 +18,7 @@ static uint16_t knock_value;
 static EVENTSOURCE_DECL(evt_knock_result_rdy);
 
 /* Every 1024 samples at 117.263KHz each, triggers at around 114Hz */
-CCM_FUNC static void adcCallback(ADCDriver *adcp, adcsample_t *buffer, size_t n)
+static void adcCallback(ADCDriver *adcp, adcsample_t *buffer, size_t n)
 {
   (void)adcp;
 
@@ -88,12 +89,11 @@ CCM_FUNC static uint16_t calculateKnockIntensity(uint16_t tgtFreq, uint16_t rati
 /*
  * Knock processing thread.
  */
-static float32_t input[FFT_SAMPLES];
-static float32_t output[FFT_SAMPLES];
-static float32_t mag_knock[SPECTRUM_SIZE];
+static q15_t fft_output[FFT_SIZE];
+static q15_t fft_mag[SPECTRUM_SIZE];
 static uint16_t output_knock[SPECTRUM_SIZE];
 static THD_WORKING_AREA(waThreadKnock, 600);
-CCM_FUNC THD_FUNCTION(ThreadKnock, arg)
+THD_FUNCTION(ThreadKnock, arg)
 {
   (void)arg;
   (void)waThreadKnock;
@@ -103,41 +103,31 @@ CCM_FUNC THD_FUNCTION(ThreadKnock, arg)
   size_t knock_data_sz;
   uint16_t i;
 
-  /* ADC 4 Ch3 Offset. -2048 */
-  KNOCK_ADC->OFR1 = ADC_OFR1_OFFSET1_EN | (ADC_OFR1_OFFSET1_CH_0 | ADC_OFR1_OFFSET1_CH_1) | (2048 & 0xFFF);
+  /* ADC 2 Ch3 Offset. -0x0FFF */
+  KNOCK_ADC->CFGR |= ADC_CFGR_ALIGN; // Left alignment
+  KNOCK_ADC->OFR1 = ADC_OFR1_OFFSET1_EN | (ADC_OFR1_OFFSET1_CH_0 | ADC_OFR1_OFFSET1_CH_1) | (2048 & 0x0FFF);
 
   adcStartConversion(&ADCD3, &adcgrpcfg_knock, knock_samples, FFT_SAMPLES);
 
   /* Initialize the CFFT/CIFFT module */
-  arm_rfft_fast_instance_f32 S1;
-  arm_rfft_fast_init_f32(&S1, FFT_SIZE);
+  arm_rfft_instance_q15 S1;
+  arm_rfft_init_q15(&S1, FFT_SIZE, 0, 1);
 
   while (TRUE)
   {
     recvFreeSamples(&knock_mb, (void*)&knock_data_ptr, &knock_data_sz, TIME_INFINITE);
 
-    /* Copy and convert ADC samples */
-    for (i = 0; i < FFT_SAMPLES; i += 4)
-    {
-      /* Hann Window */
-      const float32_t multiplier = (1.0f - arm_cos_f32((2.0f * PI * (float32_t)i) / (((float32_t)FFT_SIZE * 2.0f) - 1.0f)));
-      input[i] = multiplier * (float32_t)knock_data_ptr[i];
-      input[i+1] = multiplier * (float32_t)knock_data_ptr[i+1];
-      input[i+2] = multiplier * (float32_t)knock_data_ptr[i+2];
-      input[i+3] = multiplier * (float32_t)knock_data_ptr[i+3];
-    }
-
     /* Process the data through the RFFT module */
-    arm_rfft_fast_f32(&S1, input, output, 0);
+    arm_rfft_q15(&S1, knock_data_ptr, fft_output);
 
     /* Process the data through the Complex Magnitude Module for
     calculating the magnitude at each bin */
-    arm_cmplx_mag_f32(output, mag_knock, SPECTRUM_SIZE); // Calculate magnitude, outputs q2.14
+    arm_cmplx_mag_q15(fft_output, fft_mag, SPECTRUM_SIZE); // Calculate magnitude, outputs q2.14
 
     // Convert 2.14 to 16 Bits unsigned
     for (i=0; i < SPECTRUM_SIZE; i++)
     {
-      uint32_t tmp = (uint32_t)(mag_knock[i] / 16384.0f);
+      uint32_t tmp = (uint32_t)((uint32_t)fft_mag[i] + 0x0FFF);
       if (tmp > 0xFFFF) // Cap to 16b max
         tmp = 0xFFFF;
       output_knock[i] = (uint16_t)tmp; // 16 bits minus the 2 fractional bits
@@ -183,7 +173,7 @@ CCM_FUNC THD_FUNCTION(ThreadKnockOuput, arg)
   }
 }
 
-static void sample_cb(void *arg)
+CCM_FUNC static void sample_cb(void *arg)
 {
   (void)arg;
 
