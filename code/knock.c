@@ -127,7 +127,7 @@ THD_FUNCTION(ThreadKnock, arg)
     // Convert 2.14 to 16 Bits unsigned
     for (i=0; i < SPECTRUM_SIZE; i++)
     {
-      uint32_t tmp = (uint32_t)((uint32_t)fft_mag[i] + 0x0FFF);
+      uint32_t tmp = (uint32_t)((int32_t)fft_mag[i] + 0x0FFF);
       if (tmp > 0xFFFF) // Cap to 16b max
         tmp = 0xFFFF;
       output_knock[i] = (uint16_t)tmp; // 16 bits minus the 2 fractional bits

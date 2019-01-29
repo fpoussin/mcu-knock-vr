@@ -12,5 +12,5 @@
 #define FFT_SAMPLES (FFT_SIZE*2) // We need double the FFT size
 #define FFT_FREQ (117263/2)
 #define SPECTRUM_SIZE (FFT_SIZE/2) // We don't care about the imaginary half
-#define KNOCK_RATIO 4.66f // Knock voltage ratio after the divider
+#define KNOCK_RATIO 4.66f // Knock voltage ratio after the divider. TODO: Check value
 #define KNOCK_MAX (3.3*KNOCK_RATIO)
