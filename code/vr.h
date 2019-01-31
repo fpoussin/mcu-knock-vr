@@ -4,28 +4,31 @@
 #include "ch.h"
 #include "arm_math.h"
 
-#define VR1_ADC ADC1
-#define VR2_ADC ADC3
-#define VR3_ADC ADC4
+// NO EDITS
+#define VR1_ADC VR1_ADCD.adcm
+#define VR2_ADC VR2_ADCD.adcm
+#define VR3_ADC VR3_ADCD.adcm
+#define VR1_COMP VR1_COMPD.comp
+#define VR2_COMP VR2_COMPD.comp
+#define VR3_COMP VR3_COMPD.comp
+#define VR1_OPAMP VR1_OPAMPD.opamp
+#define VR2_OPAMP VR2_OPAMPD.opamp
+#define VR3_OPAMP VR3_OPAMPD.opamp
+#define VR_DAC VR_DACD.dacm
+// NO EDITS
+
 #define VR1_ADCD ADCD1
 #define VR2_ADCD ADCD3
 #define VR3_ADCD ADCD4
 
-#define VR1_COMP COMP1
-#define VR2_COMP COMP2
-#define VR3_COMP COMP6
 #define VR1_COMPD COMPD1
 #define VR2_COMPD COMPD2
 #define VR3_COMPD COMPD6
 
-#define VR1_OPAMP OPAMP1
-#define VR2_OPAMP OPAMP3
-#define VR3_OPAMP OPAMP4
 #define VR1_OPAMPD OPAMPD1
 #define VR2_OPAMPD OPAMPD3
 #define VR3_OPAMPD OPAMPD4
 
-#define VR_DAC DAC1
 #define VR_DACD DACD1
 
 #define VR_SAMPLES 512

@@ -54,8 +54,8 @@ static vr_t vr1, vr2, vr3;
 /*
  * Peripherals
  * VR1: ADC1 + COMP 1 + TIM15
- * VR2: ADC2 + COMP 2 + TIM16
- * VR3: ADC3 + COMP 6 + TIM17
+ * VR2: ADC3 + COMP 2 + TIM16
+ * VR3: ADC4 + COMP 6 + TIM17
  * All: DAC1 (bias)
  */
 
@@ -266,20 +266,20 @@ static const COMPConfig comp6_conf = {
 
 // VR1
 static const OPAMPConfig opamp1_conf = {
-  STM32_OPAMP_NonInvertingInput_IO3 | // INP connectd to PA3
-  STM32_OPAMP_InvertingInput_Vout // INM connected to vout (follower)
+  OPAMP1_CSR_VPSEL_PA01 | // INP connectd to PA1
+  OPAMP1_CSR_VMSEL_FOLWR // INM connected to vout (follower)
 };
 
 // VR2
-static const OPAMPConfig opamp2_conf = {
-  STM32_OPAMP_NonInvertingInput_IO2 | // INP connectd to PB14
-  STM32_OPAMP_InvertingInput_Vout // INM connected to vout (follower)
+static const OPAMPConfig opamp3_conf = {
+  OPAMP3_CSR_VPSEL_PB00 | // INP connectd to PB0
+  OPAMP3_CSR_VMSEL_FOLWR // INM connected to vout (follower)
 };
 
 // VR3
-static const OPAMPConfig opamp3_conf = {
-  STM32_OPAMP_NonInvertingInput_IO3 | // INP connectd to PB0
-  STM32_OPAMP_InvertingInput_Vout // INM connected to vout (follower)
+static const OPAMPConfig opamp4_conf = {
+  OPAMP4_CSR_VPSEL_PB13 | // INP connectd to PB13
+  OPAMP4_CSR_VMSEL_FOLWR // INM connected to vout (follower)
 };
 
 /* ADC1 Clk is 72Mhz/1 72Mhz  */
@@ -457,8 +457,8 @@ CCM_FUNC static THD_FUNCTION(ThreadVR3, arg)
 void createVrThreads(void)
 {
   opampStart(&VR1_OPAMPD, &opamp1_conf);
-  opampStart(&VR2_OPAMPD, &opamp2_conf);
-  opampStart(&VR3_OPAMPD, &opamp3_conf);
+  opampStart(&VR2_OPAMPD, &opamp3_conf);
+  opampStart(&VR3_OPAMPD, &opamp4_conf);
   adcStart(&VR1_ADCD, NULL);
   adcStart(&VR2_ADCD, NULL);
   adcStart(&VR3_ADCD, NULL);

@@ -7,8 +7,8 @@
 
 /*
  * Knock peripherals:
- * OPAMP4 (buffer)
- * ADC4 Ch3
+ * OPAMP2 (buffer)
+ * ADC2 Ch3
  * DAC2 (result output)
  */
 
@@ -34,9 +34,9 @@ static const DACConfig dac_conf = {
   .cr           = 0
 };
 
-static const OPAMPConfig opamp_conf = {
-  STM32_OPAMP_NonInvertingInput_IO4 | // INP connectd to PB13
-  STM32_OPAMP_InvertingInput_Vout // INM connected to vout (follower)
+static const OPAMPConfig opamp2_conf = {
+  OPAMP2_CSR_VPSEL_PB14 | // INP connectd to PB14
+  OPAMP2_CSR_VMSEL_FOLWR // INM connected to vout (follower)
 };
 
 /* ADC4 Clk is 72Mhz/1 72Mhz  */
@@ -189,7 +189,7 @@ CCM_FUNC static void sample_cb(void *arg)
 
 void createKnockThread(void)
 {
-  opampStart(&KNOCK_OPAMPD, &opamp_conf);
+  opampStart(&KNOCK_OPAMPD, &opamp2_conf);
   adcStart(&KNOCK_ADCD, NULL);
 
   dacStart(&KNOCK_DACD, &dac_conf);
