@@ -16,16 +16,12 @@ git submodule update --init
     stage('build') {
       steps {
         sh '''cd $WORKSPACE/code/cm4-dsp-lib
+make clean
 make
 cd ..'''
         sh '''cd $WORKSPACE/code
+make clean
 make'''
-      }
-    }
-    stage('clean') {
-      steps {
-        sh '''cd $WORKSPACE/code
-make clean'''
       }
     }
   }
