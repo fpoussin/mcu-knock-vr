@@ -1,7 +1,7 @@
 pipeline {
   agent {
     docker {
-      image 'fpoussin/jenkins:ubuntu-16.10-arm'
+      image 'fpoussin/jenkins:ubuntu-18.04-arm'
     }
 
   }
