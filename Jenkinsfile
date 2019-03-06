@@ -22,5 +22,11 @@ cd ..'''
 make'''
       }
     }
+    stage('clean') {
+      steps {
+        sh '''cd $WORKSPACE/code
+make clean'''
+      }
+    }
   }
 }
