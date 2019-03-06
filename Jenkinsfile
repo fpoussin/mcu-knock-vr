@@ -15,7 +15,8 @@ git submodule update --init
     }
     stage('build') {
       steps {
-        sh 'make'
+        sh '''cd code
+make'''
       }
     }
   }
