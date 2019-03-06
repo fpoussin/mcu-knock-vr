@@ -17,11 +17,11 @@ git submodule update --init
       steps {
         sh '''cd $WORKSPACE/code/cm4-dsp-lib
 make clean
-make
+make -j $(nproc)
 cd ..'''
         sh '''cd $WORKSPACE/code
 make clean
-make'''
+make -j $(nproc)'''
       }
     }
   }
