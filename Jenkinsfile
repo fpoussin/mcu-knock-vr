@@ -15,7 +15,10 @@ git submodule update --init
     }
     stage('build') {
       steps {
-        sh '''cd code
+        sh '''cd $WORKSPACE/code/cm4-dsp-lib
+make
+cd ..'''
+        sh '''cd $WORKSPACE/code
 make'''
       }
     }
