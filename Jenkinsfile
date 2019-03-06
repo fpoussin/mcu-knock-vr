@@ -8,7 +8,8 @@ pipeline {
   stages {
     stage('submodules') {
       steps {
-        sh '''git submodule update --init
+        sh '''git submodule sync
+git submodule update --init
 '''
       }
     }
