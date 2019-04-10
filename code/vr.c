@@ -406,7 +406,7 @@ CCM_FUNC static THD_FUNCTION(ThreadVR2, arg)
 
   median_init(&median, 0, vr2_pair, VR_SAMPLES);
 
-  /* ADC 2 Ch1 Offset. -2048 */
+  /* ADC 3 Ch1 Offset. -2048 */
   VR2_ADC->OFR1 = ADC_OFR1_OFFSET1_EN | ADC_OFR1_OFFSET1_CH_0 | (2048 & 0xFFF);
   adcStartConversion(&VR2_ADCD, &vr2grpcfg, vr2_samples, VR_SAMPLES);
 
@@ -437,7 +437,7 @@ CCM_FUNC static THD_FUNCTION(ThreadVR3, arg)
 
   median_init(&median, 0, vr3_pair, VR_SAMPLES);
 
-  /* ADC 3 Ch3 Offset. -2048 */
+  /* ADC 4 Ch3 Offset. -2048 */
   VR3_ADC->OFR1 = ADC_OFR1_OFFSET1_EN | ADC_OFR1_OFFSET1_CH_0 | ADC_OFR1_OFFSET1_CH_1 | (2048 & 0xFFF);
   adcStartConversion(&VR3_ADCD, &vr3grpcfg, vr3_samples, VR_SAMPLES);
 
